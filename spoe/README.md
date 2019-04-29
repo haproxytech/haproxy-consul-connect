@@ -26,37 +26,53 @@ From Haproxy's documentation :
 ## How to use
 
 ```golang
-agent := spoe.New(func(messages []spoe.Message) ([]spoe.Action, error) {
-	reputation := 0.0
+package main
 
-	for _, msg := range messages {
-		if m.Name != "ip-rep" {
-			continue
+import (
+        "fmt"
+        "net"
+
+        log "github.com/sirupsen/logrus"
+        "github.com/aestek/haproxy-connect/spoe"
+)
+
+func getReputation(ip net.IP) (float64, error) {
+	// implement IP reputation code here
+        return 1.0, nil
+}
+
+func main() {
+	agent := spoe.New(func(messages []spoe.Message) ([]spoe.Action, error) {
+		reputation := 0.0
+
+		for _, msg := range messages {
+			if msg.Name != "ip-rep" {
+				continue
+			}
+
+			ip, ok := msg.Args["ip"].(net.IP)
+			if !ok {
+				return nil, fmt.Errorf("spoe handler: expected ip in message")
+			}
+
+			reputation, err = getReputation(ip)
+			if err != nil {
+				return nil, fmt.Errorf("spoe handler: error processing request: %s", err)
+			}
 		}
 
-		ip, ok := m.Args["ip"].(net.IP)
-		if !ok {
-			return nil, fmt.Errorf("spoe handler: expected ip in message")
-		}
+		return []spoe.Action{
+			spoe.ActionSetVar{
+				Name:  "reputation",
+				Scope: spoe.VarScopeSession,
+				Value: reputation,
+			},
+		}, nil
+	})
 
-
-		reputation, err = getReputation(ip)
-		if err != nil {
-			return nil, fmt.Errorf("spoe handler: error processing request: %s", err)
-		}
+	if err := agent.ListenAndServe(":9000"); err != nil {
+		log.Fatal(err)
 	}
-
-	return []spoe.Action{
-		spoe.ActionSetVar{
-			Name:  "reputation",
-			Scope: spoe.VarScopeSession,
-			Value: reputation,
-		},
-	}, nil
-})
-
-if err := agent.ListenAndServe(":9000"); err != nil {
-	log.Fatal(err)
 }
 
 ```
