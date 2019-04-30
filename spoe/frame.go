@@ -54,6 +54,10 @@ func decodeFrame(r io.Reader, buffer []byte) (frame, error) {
 	if err != nil {
 		return frame, nil
 	}
+	
+	if frameLength > maxFrameSize {
+		return frame, errors.New("frame length")
+	}
 
 	frame.data = buffer[:frameLength]
 
