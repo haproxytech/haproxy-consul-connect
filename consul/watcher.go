@@ -332,10 +332,12 @@ func (w *Watcher) runSPOE() {
 		log.Fatal("error starting spoe agent:", err)
 	}
 
-	err = spoeAgent.Serve(lis)
-	if err != nil {
-		log.Fatal("error starting spoe agent:", err)
-	}
+	go func() {
+		err = spoeAgent.Serve(lis)
+		if err != nil {
+			log.Fatal("error starting spoe agent:", err)
+		}
+	}()
 
 	_, portStr, _ := net.SplitHostPort(lis.Addr().String())
 	port, _ := strconv.Atoi(portStr)

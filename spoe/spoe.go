@@ -62,32 +62,28 @@ func (a *Agent) ListenAndServe(addr string) error {
 func (a *Agent) Serve(lis net.Listener) error {
 	log.Infof("spoe: listening on %s", lis.Addr().String())
 
-	go func() {
-		for {
-			c, err := lis.Accept()
-			if err != nil {
-				log.Errorf("spoe: %s", err)
-				continue
-			}
-
-			log.Debugf("spoe: connection from %s", c.RemoteAddr())
-
-			go func() {
-				c := &conn{
-					Conn:    c,
-					state:   connStateInit,
-					handler: a.Handler,
-					buff:    bufio.NewReadWriter(bufio.NewReader(c), bufio.NewWriter(c)),
-				}
-				err := c.run(a)
-				if err != nil {
-					log.Errorf("spoe: error handling connection: %s", err)
-				}
-			}()
+	for {
+		c, err := lis.Accept()
+		if err != nil {
+			log.Errorf("spoe: %s", err)
+			continue
 		}
-	}()
 
-	return nil
+		log.Debugf("spoe: connection from %s", c.RemoteAddr())
+
+		go func() {
+			c := &conn{
+				Conn:    c,
+				state:   connStateInit,
+				handler: a.Handler,
+				buff:    bufio.NewReadWriter(bufio.NewReader(c), bufio.NewWriter(c)),
+			}
+			err := c.run(a)
+			if err != nil {
+				log.Errorf("spoe: error handling connection: %s", err)
+			}
+		}()
+	}
 }
 
 func (c *conn) run(a *Agent) error {
