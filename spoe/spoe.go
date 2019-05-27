@@ -30,6 +30,8 @@ type conn struct {
 	handler      Handler
 	buff         *bufio.ReadWriter
 	maxFrameSize int
+
+	engineID string
 }
 
 type Handler func(args []Message) ([]Action, error)
@@ -39,13 +41,16 @@ type Agent struct {
 
 	maxFrameSize int
 
-	acks chan frame
+	acksLock sync.Mutex
+	acks     map[string]chan frame
+	acksWG   map[string]*sync.WaitGroup
 }
 
 func New(h Handler) *Agent {
 	a := &Agent{
 		Handler: h,
-		acks:    make(chan frame),
+		acks:    make(map[string]chan frame),
+		acksWG:  make(map[string]*sync.WaitGroup),
 	}
 	return a
 }
@@ -92,21 +97,21 @@ func (c *conn) run(a *Agent) error {
 	done := make(chan struct{})
 	defer close(done)
 
-	frame, err := decodeFrame(c, make([]byte, maxFrameSize))
+	myframe, err := decodeFrame(c, make([]byte, maxFrameSize))
 	if err != nil {
 		return err
 	}
 
-	if frame.ftype != frameTypeHaproxyHello {
-		return fmt.Errorf("unexpected frame type %x when initializing connection", frame.ftype)
+	if myframe.ftype != frameTypeHaproxyHello {
+		return fmt.Errorf("unexpected frame type %x when initializing connection", myframe.ftype)
 	}
 
-	frame, healcheck, err := c.handleHello(frame)
+	myframe, healcheck, err := c.handleHello(myframe)
 	if err != nil {
 		return err
 	}
 
-	err = encodeFrame(c.buff, frame)
+	err = encodeFrame(c.buff, myframe)
 	if err != nil {
 		return err
 	}
@@ -124,14 +129,40 @@ func (c *conn) run(a *Agent) error {
 		},
 	}
 
+	a.acksLock.Lock()
+	if _, ok := a.acks[c.engineID]; !ok {
+		a.acks[c.engineID] = make(chan frame)
+		wg := &sync.WaitGroup{}
+		wg.Add(1)
+		a.acksWG[c.engineID] = wg
+
+		go func() {
+			// wait until there is not more connection for this engine-id
+			// before deleting it
+			wg.Wait()
+
+			a.acksLock.Lock()
+			delete(a.acksWG, c.engineID)
+			delete(a.acks, c.engineID)
+			a.acksLock.Unlock()
+		}()
+	} else {
+		a.acksWG[c.engineID].Add(1)
+	}
+	// signal that this connection is done using the engine
+	defer a.acksWG[c.engineID].Done()
+
+	acks := a.acks[c.engineID]
+	a.acksLock.Unlock()
+
 	// run reply loop
 	go func() {
 		for {
 			select {
 			case <-done:
 				return
-			case frame := <-a.acks:
-				err = encodeFrame(c.buff, frame)
+			case myframe := <-acks:
+				err = encodeFrame(c.buff, myframe)
 				if err != nil {
 					log.Errorf("spoe: %s", err)
 					continue
@@ -141,39 +172,39 @@ func (c *conn) run(a *Agent) error {
 					log.Errorf("spoe: %s", err)
 					continue
 				}
-				pool.Put(frame.originalBuffer)
+				pool.Put(myframe.originalBuffer)
 			}
 		}
 	}()
 
 	for {
-		frame, err := decodeFrame(c, pool.Get().([]byte))
+		myframe, err := decodeFrame(c, pool.Get().([]byte))
 		if err != nil {
 			return err
 		}
 
-		switch frame.ftype {
+		switch myframe.ftype {
 
 		case frameTypeHaproxyNotify:
 			go func() {
-				frame, err = c.handleNotify(frame)
+				myframe, err = c.handleNotify(myframe)
 				if err != nil {
 					log.Errorf("spoe: %s", err)
 					return
 				}
 
-				a.acks <- frame
+				acks <- myframe
 			}()
 
 		case frameTypeHaproxyDiscon:
-			err := c.handleDisconnect(frame)
+			err := c.handleDisconnect(myframe)
 			if err != nil {
 				log.Errorf("spoe: %s", err)
 			}
 			return nil
 
 		default:
-			log.Errorf("spoe: frame type %x is not handled", frame.ftype)
+			log.Errorf("spoe: frame type %x is not handled", myframe.ftype)
 		}
 	}
 }

@@ -15,6 +15,7 @@ const (
 	helloKeyVersion           = "version"
 	helloKeyCapabilities      = "capabilities"
 	helloKeyHealthcheck       = "healthcheck"
+	helloKeyEngineId          = "engine-id"
 
 	capabilityAsync      = "async"
 	capabilityPipelining = "pipelining"
@@ -72,6 +73,11 @@ func (c *conn) handleHello(frame frame) (frame, bool, error) {
 
 	if !checkCapabilities(remoteCapabilities) {
 		return frame, false, fmt.Errorf("hello: expected capabilities %v", helloCapabilities)
+	}
+
+	c.engineID, _ = data[helloKeyEngineId].(string)
+	if len(c.engineID) == 0 {
+		return frame, false, fmt.Errorf("hello: engine-id not found")
 	}
 
 	frame.ftype = frameTypeAgentHello
