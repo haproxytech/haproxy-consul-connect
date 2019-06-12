@@ -48,10 +48,11 @@ type certLeaf struct {
 }
 
 type Watcher struct {
-	service string
-	consul  *api.Client
-	token   string
-	C       chan haproxy.Configuration
+	service     string
+	serviceName string
+	consul      *api.Client
+	token       string
+	C           chan haproxy.Configuration
 
 	lock  sync.Mutex
 	ready sync.WaitGroup
@@ -84,11 +85,18 @@ func (w *Watcher) Run() error {
 		return err
 	}
 
+	svc, _, err := w.consul.Agent().Service(w.service, &api.QueryOptions{})
+	if err != nil {
+		return err
+	}
+
+	w.serviceName = svc.Service
+
 	w.ready.Add(5)
 
 	go w.runSPOE()
 	go w.watchCA()
-	go w.watchLeaf(w.service)
+	go w.watchLeaf(w.serviceName)
 	go w.watchService(proxyID, w.handleProxyChange)
 	go w.watchService(w.service, func(first bool, srv *api.AgentService) {
 		w.downstream.RemotePort = srv.Port
@@ -206,12 +214,12 @@ func (w *Watcher) watchLeaf(service string) {
 	for {
 		// if the upsteam was removed, stop watching its leaf
 		_, upstreamRunning := w.upstreams[service]
-		if service != w.service && !upstreamRunning {
+		if service != w.serviceName && !upstreamRunning {
 			log.Debugf("consul: stopping watching leaf cert for %s", service)
 			return
 		}
 
-		cert, meta, err := w.consul.Agent().ConnectCALeaf(w.service, &api.QueryOptions{
+		cert, meta, err := w.consul.Agent().ConnectCALeaf(service, &api.QueryOptions{
 			WaitTime:  10 * time.Minute,
 			WaitIndex: lastIndex,
 		})
@@ -231,8 +239,8 @@ func (w *Watcher) watchLeaf(service string) {
 			if _, ok := w.leafs[service]; !ok {
 				w.leafs[service] = &certLeaf{}
 			}
-			w.leafs[w.service].Cert = haproxy.Secret(cert.CertPEM)
-			w.leafs[w.service].Key = haproxy.Secret(cert.PrivateKeyPEM)
+			w.leafs[service].Cert = haproxy.Secret(cert.CertPEM)
+			w.leafs[service].Key = haproxy.Secret(cert.PrivateKeyPEM)
 			w.lock.Unlock()
 			w.notifyChanged()
 		}
@@ -365,8 +373,8 @@ func (w *Watcher) genCfg() haproxy.Configuration {
 				TLS:      true,
 				ClientCA: w.CertCA,
 
-				ServerCRT: w.leafs[w.service].Cert,
-				ServerKey: w.leafs[w.service].Key,
+				ServerCRT: w.leafs[w.serviceName].Cert,
+				ServerKey: w.leafs[w.serviceName].Key,
 			},
 		},
 		Backends: []haproxy.Backend{
@@ -416,8 +424,8 @@ func (w *Watcher) genCfg() haproxy.Configuration {
 				Port: s.Service.Port,
 
 				TLS:       true,
-				ClientCRT: w.leafs[w.service].Cert,
-				ClientKey: w.leafs[w.service].Key,
+				ClientCRT: w.leafs[w.serviceName].Cert,
+				ClientKey: w.leafs[w.serviceName].Key,
 				ServerCA:  w.CertCA,
 			})
 		}
