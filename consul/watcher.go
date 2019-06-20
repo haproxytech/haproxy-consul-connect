@@ -173,7 +173,7 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 			if u.done {
 				return
 			}
-			nodes, meta, err := w.consul.Health().Connect(up.DestinationName, "", false, &api.QueryOptions{
+			nodes, meta, err := w.consul.Health().Connect(up.DestinationName, "", true, &api.QueryOptions{
 				Datacenter: up.Datacenter,
 				WaitTime:   10 * time.Minute,
 				WaitIndex:  index,
