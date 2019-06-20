@@ -9,7 +9,6 @@ global
 
 {{range $fe := .Frontends}}
 frontend {{$fe.Name}}
-    mode tcp
     bind {{$fe.BindAddr}}:{{$fe.BindPort}}{{if $fe.TLS}} ssl crt {{$fe.ServerCRTPath}} ca-file {{$fe.ClientCAPath}} verify required{{end}}
     option tcplog
     timeout client 1m
@@ -22,9 +21,8 @@ frontend {{$fe.Name}}
 
 {{range $be := .Backends}}
 backend {{$be.Name}}
-    mode tcp
     option redispatch
-    balance roundrobin
+    balance leastconn
     timeout connect 10s
 	timeout server 1m
 	{{range $s := $be.Servers}}
