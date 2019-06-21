@@ -2,15 +2,9 @@ package consul
 
 import (
 	"crypto/x509"
-	"fmt"
-	"net"
-	"strconv"
 	"sync"
 	"time"
 
-	"github.com/aestek/haproxy-connect/spoe"
-
-	"github.com/aestek/haproxy-connect/haproxy"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/command/connect/proxy"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +19,7 @@ const (
 
 type upstream struct {
 	LocalBindAddress string
-	LocalPort        int
+	LocalBindPort    int
 	Service          string
 	Datacenter       string
 	Nodes            []*api.ServiceEntry
@@ -35,14 +29,14 @@ type upstream struct {
 
 type downstream struct {
 	LocalBindAddress string
-	LocalPort        int
-	RemoteAddress    string
-	RemotePort       int
+	LocalBindPort    int
+	TargetAddress    string
+	TargetPort       int
 }
 
 type certLeaf struct {
-	Cert haproxy.Secret
-	Key  haproxy.Secret
+	Cert []byte
+	Key  []byte
 
 	done bool
 }
@@ -52,17 +46,16 @@ type Watcher struct {
 	serviceName string
 	consul      *api.Client
 	token       string
-	C           chan haproxy.Configuration
+	C           chan Config
 
 	lock  sync.Mutex
 	ready sync.WaitGroup
 
 	upstreams  map[string]*upstream
 	downstream downstream
-	CertCA     []haproxy.Secret
-	CertCAPool *x509.CertPool
+	certCAs    [][]byte
+	certCAPool *x509.CertPool
 	leafs      map[string]*certLeaf
-	spoePort   int
 
 	update chan struct{}
 }
@@ -72,7 +65,7 @@ func New(service string, consul *api.Client) *Watcher {
 		service: service,
 		consul:  consul,
 
-		C:         make(chan haproxy.Configuration),
+		C:         make(chan Config),
 		upstreams: make(map[string]*upstream),
 		update:    make(chan struct{}, 1),
 		leafs:     make(map[string]*certLeaf),
@@ -92,14 +85,13 @@ func (w *Watcher) Run() error {
 
 	w.serviceName = svc.Service
 
-	w.ready.Add(5)
+	w.ready.Add(4)
 
-	go w.runSPOE()
 	go w.watchCA()
 	go w.watchLeaf(w.serviceName)
 	go w.watchService(proxyID, w.handleProxyChange)
 	go w.watchService(w.service, func(first bool, srv *api.AgentService) {
-		w.downstream.RemotePort = srv.Port
+		w.downstream.TargetPort = srv.Port
 		if first {
 			w.ready.Done()
 		}
@@ -116,14 +108,14 @@ func (w *Watcher) Run() error {
 
 func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	w.downstream.LocalBindAddress = defaultDownstreamBindAddr
-	w.downstream.LocalPort = srv.Port
-	w.downstream.RemoteAddress = defaultUpstreamBindAddr
+	w.downstream.LocalBindPort = srv.Port
+	w.downstream.TargetAddress = defaultUpstreamBindAddr
 	if srv.Connect != nil && srv.Connect.Proxy != nil && srv.Connect.Proxy.Config != nil {
 		if b, ok := srv.Connect.Proxy.Config["bind_address"].(string); ok {
 			w.downstream.LocalBindAddress = b
 		}
 		if a, ok := srv.Connect.Proxy.Config["local_service_address"].(string); ok {
-			w.downstream.RemoteAddress = a
+			w.downstream.TargetAddress = a
 		}
 	}
 
@@ -158,7 +150,7 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 
 	u := &upstream{
 		LocalBindAddress: up.LocalBindAddress,
-		LocalPort:        up.LocalBindPort,
+		LocalBindPort:    up.LocalBindPort,
 		Service:          up.DestinationName,
 		Datacenter:       up.Datacenter,
 	}
@@ -239,8 +231,8 @@ func (w *Watcher) watchLeaf(service string) {
 			if _, ok := w.leafs[service]; !ok {
 				w.leafs[service] = &certLeaf{}
 			}
-			w.leafs[service].Cert = haproxy.Secret(cert.CertPEM)
-			w.leafs[service].Key = haproxy.Secret(cert.PrivateKeyPEM)
+			w.leafs[service].Cert = []byte(cert.CertPEM)
+			w.leafs[service].Key = []byte(cert.PrivateKeyPEM)
 			w.lock.Unlock()
 			w.notifyChanged()
 		}
@@ -306,11 +298,11 @@ func (w *Watcher) watchCA() {
 		if changed {
 			log.Debugf("consul: CA certs changed")
 			w.lock.Lock()
-			w.CertCA = w.CertCA[:0]
-			w.CertCAPool = x509.NewCertPool()
+			w.certCAs = w.certCAs[:0]
+			w.certCAPool = x509.NewCertPool()
 			for _, ca := range caList.Roots {
-				w.CertCA = append(w.CertCA, haproxy.Secret(ca.RootCertPEM))
-				ok := w.CertCAPool.AppendCertsFromPEM([]byte(ca.RootCertPEM))
+				w.certCAs = append(w.certCAs, []byte(ca.RootCertPEM))
+				ok := w.certCAPool.AppendCertsFromPEM([]byte(ca.RootCertPEM))
 				if !ok {
 					log.Warn("consul: unable to add CA certificate to pool")
 				}
@@ -327,110 +319,67 @@ func (w *Watcher) watchCA() {
 	}
 }
 
-func (w *Watcher) runSPOE() {
-	spoeAgent := spoe.New(NewSPOEHandler(w.consul, w.service, func() *x509.CertPool {
-		w.lock.Lock()
-		p := w.CertCAPool
-		w.lock.Unlock()
-		return p
-	}).Handler)
-
-	lis, err := net.Listen("tcp", "127.0.0.1:")
-	if err != nil {
-		log.Fatal("error starting spoe agent:", err)
-	}
-
-	go func() {
-		err = spoeAgent.Serve(lis)
-		if err != nil {
-			log.Fatal("error starting spoe agent:", err)
-		}
-	}()
-
-	_, portStr, _ := net.SplitHostPort(lis.Addr().String())
-	port, _ := strconv.Atoi(portStr)
-
-	w.lock.Lock()
-	defer w.lock.Unlock()
-	w.spoePort = port
-	w.ready.Done()
-}
-
-func (w *Watcher) genCfg() haproxy.Configuration {
+func (w *Watcher) genCfg() Config {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	config := haproxy.Configuration{
-		Frontends: []haproxy.Frontend{
-			haproxy.Frontend{
-				Name:           "inbound_front",
-				BindAddr:       w.downstream.LocalBindAddress,
-				BindPort:       w.downstream.LocalPort,
-				DefaultBackend: "inbound_back",
+	config := Config{
+		ServiceName: w.serviceName,
+		CAsPool:     w.certCAPool,
+		Downstream: Downstream{
+			LocalBindAddress: w.downstream.LocalBindAddress,
+			LocalBindPort:    w.downstream.LocalBindPort,
+			TargetAddress:    w.downstream.TargetAddress,
+			TargetPort:       w.downstream.TargetPort,
 
-				SPOE: true,
-
-				TLS:      true,
-				ClientCA: w.CertCA,
-
-				ServerCRT: w.leafs[w.serviceName].Cert,
-				ServerKey: w.leafs[w.serviceName].Key,
-			},
-		},
-		Backends: []haproxy.Backend{
-			haproxy.Backend{
-				Name: "inbound_back",
-				Servers: []haproxy.BackendServer{
-					haproxy.BackendServer{
-						Name: "inbound_back_srv",
-						Host: w.downstream.RemoteAddress,
-						Port: w.downstream.RemotePort,
-					},
-				},
-			},
-			haproxy.Backend{
-				Name: "spoe_back",
-				Servers: []haproxy.BackendServer{
-					haproxy.BackendServer{
-						Name: "spoe_back_srv",
-						Host: "127.0.0.1",
-						Port: w.spoePort,
-					},
-				},
+			TLS: TLS{
+				TLSCAs:  w.certCAs,
+				TLSCert: w.leafs[w.serviceName].Cert,
+				TLSKey:  w.leafs[w.serviceName].Key,
 			},
 		},
 	}
 
 	for _, up := range w.upstreams {
-		config.Frontends = append(config.Frontends, haproxy.Frontend{
-			Name:           fmt.Sprintf("%s_front", up.Service),
-			BindAddr:       up.LocalBindAddress,
-			BindPort:       up.LocalPort,
-			DefaultBackend: fmt.Sprintf("%s_back", up.Service),
-		})
+		upstream := Upstream{
+			Service:          up.Service,
+			LocalBindAddress: up.LocalBindAddress,
+			LocalBindPort:    up.LocalBindPort,
 
-		backend := haproxy.Backend{
-			Name: fmt.Sprintf("%s_back", up.Service),
+			TLS: TLS{
+				TLSCAs:  w.certCAs,
+				TLSCert: w.leafs[w.serviceName].Cert,
+				TLSKey:  w.leafs[w.serviceName].Key,
+			},
 		}
 
-		for i, s := range up.Nodes {
+		for _, s := range up.Nodes {
 			host := s.Service.Address
 			if host == "" {
 				host = s.Node.Address
 			}
-			backend.Servers = append(backend.Servers, haproxy.BackendServer{
-				Name: fmt.Sprintf("%s_back_%d", up.Service, i),
-				Host: host,
-				Port: s.Service.Port,
 
-				TLS:       true,
-				ClientCRT: w.leafs[w.serviceName].Cert,
-				ClientKey: w.leafs[w.serviceName].Key,
-				ServerCA:  w.CertCA,
+			weight := 1
+			switch s.Checks.AggregatedStatus() {
+			case api.HealthPassing:
+				weight = s.Service.Weights.Passing
+			case api.HealthWarning:
+				weight = s.Service.Weights.Warning
+			default:
+				continue
+			}
+			if weight == 0 {
+				continue
+			}
+
+			upstream.Nodes = append(upstream.Nodes, UpstreamNode{
+				Host:   host,
+				Port:   s.Service.Port,
+				Weight: weight,
 			})
 		}
 
-		config.Backends = append(config.Backends, backend)
+		config.Upstreams = append(config.Upstreams, upstream)
 	}
 
 	return config

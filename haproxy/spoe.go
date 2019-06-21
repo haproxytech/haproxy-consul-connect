@@ -1,4 +1,4 @@
-package consul
+package haproxy
 
 import (
 	"crypto/x509"
@@ -6,28 +6,36 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aestek/haproxy-connect/spoe"
+	"github.com/aestek/haproxy-connect/consul"
+	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/api"
-	consul "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
 )
 
 type SPOEHandler struct {
 	serviceName string
-	c           *consul.Client
-	rootCAs     func() *x509.CertPool
+	c           *api.Client
+	cfg         func() consul.Config
 }
 
-func NewSPOEHandler(c *consul.Client, serviceName string, rootCAs func() *x509.CertPool) *SPOEHandler {
+func NewSPOEHandler(c *api.Client, cfg func() consul.Config) *SPOEHandler {
 	return &SPOEHandler{
-		c:           c,
-		serviceName: serviceName,
-		rootCAs:     rootCAs,
+		c:   c,
+		cfg: cfg,
 	}
 }
 
 func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
+	return []spoe.Action{
+		spoe.ActionSetVar{
+			Name:  "auth",
+			Scope: spoe.VarScopeSession,
+			Value: 0,
+		},
+	}, nil
+
+	cfg := h.cfg()
 	for _, m := range args {
 		if m.Name != "check-intentions" {
 			continue
@@ -35,7 +43,7 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 
 		certBytes, ok := m.Args["cert"].([]byte)
 		if !ok {
-			return nil, fmt.Errorf("spoe handler: expected cert bytes in message")
+			return nil, fmt.Errorf("spoe handler: expected cert bytes in message, got: %+v", m.Args)
 		}
 
 		cert, err := x509.ParseCertificate(certBytes)
@@ -44,7 +52,7 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 		}
 
 		_, err = cert.Verify(x509.VerifyOptions{
-			Roots: h.rootCAs(),
+			Roots: cfg.CAsPool,
 		})
 		if err != nil {
 			log.Warn("connect: error validating certificate: %s", err)

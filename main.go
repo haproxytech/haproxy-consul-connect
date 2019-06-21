@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aestek/haproxy-connect/haproxy/haproxyconfig"
+	haproxy "github.com/aestek/haproxy-connect/haproxy"
 	"github.com/aestek/haproxy-connect/lib"
 
 	"github.com/hashicorp/consul/api"
@@ -18,7 +18,8 @@ func main() {
 
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
 	service := flag.String("sidecar-for", "", "The consul service to proxy")
-	haproxy := flag.String("haproxy", "haproxy", "Haproxy binary path")
+	haproxyBin := flag.String("haproxy", "haproxy", "Haproxy binary path")
+	dataplaneBin := flag.String("dataplane", "dataplane-api", "Dataplane binary path")
 	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Haproxy binary path")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
@@ -42,14 +43,11 @@ func main() {
 		}
 	}()
 
-	opts := haproxyconfig.Options{
-		Bin:           *haproxy,
+	hap := haproxy.New(consulClient, watcher.C, haproxy.Options{
+		HAProxyBin:    *haproxyBin,
+		DataplaneBin:  *dataplaneBin,
 		ConfigBaseDir: *haproxyCfgBasePath,
-	}
-	if haproxy != nil {
-		opts.Bin = *haproxy
-	}
-	hap := haproxyconfig.New(watcher.C, opts)
+	})
 	sd.Add(1)
 	go func() {
 		defer sd.Done()
