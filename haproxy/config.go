@@ -84,7 +84,7 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 		return nil, err
 	}
 
-	cfgFile, err := os.Create(cfg.HAProxy)
+	cfgFile, err := os.OpenFile(cfg.HAProxy, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 		return nil, err
 	}
 
-	spoeCfgFile, err := os.Create(cfg.SPOE)
+	spoeCfgFile, err := os.OpenFile(cfg.SPOE, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -140,8 +140,8 @@ func (h *haConfig) FilePath(content []byte) (string, error) {
 
 func (h *haConfig) CertsPath(t consul.TLS) (string, string, error) {
 	crt := []byte{}
-	crt = append(crt, t.TLSCert...)
-	crt = append(crt, t.TLSKey...)
+	crt = append(crt, t.Cert...)
+	crt = append(crt, t.Key...)
 
 	crtPath, err := h.FilePath(crt)
 	if err != nil {
@@ -149,7 +149,7 @@ func (h *haConfig) CertsPath(t consul.TLS) (string, string, error) {
 	}
 
 	ca := []byte{}
-	for _, c := range t.TLSCAs {
+	for _, c := range t.CAs {
 		ca = append(ca, c...)
 	}
 

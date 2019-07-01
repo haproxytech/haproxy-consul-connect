@@ -333,9 +333,9 @@ func (w *Watcher) genCfg() Config {
 			TargetPort:       w.downstream.TargetPort,
 
 			TLS: TLS{
-				TLSCAs:  w.certCAs,
-				TLSCert: w.leafs[w.serviceName].Cert,
-				TLSKey:  w.leafs[w.serviceName].Key,
+				CAs:  w.certCAs,
+				Cert: w.leafs[w.serviceName].Cert,
+				Key:  w.leafs[w.serviceName].Key,
 			},
 		},
 	}
@@ -347,9 +347,9 @@ func (w *Watcher) genCfg() Config {
 			LocalBindPort:    up.LocalBindPort,
 
 			TLS: TLS{
-				TLSCAs:  w.certCAs,
-				TLSCert: w.leafs[w.serviceName].Cert,
-				TLSKey:  w.leafs[w.serviceName].Key,
+				CAs:  w.certCAs,
+				Cert: w.leafs[w.serviceName].Cert,
+				Key:  w.leafs[w.serviceName].Key,
 			},
 		}
 

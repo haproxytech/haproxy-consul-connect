@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os/exec"
+	"syscall"
 	"time"
 
 	"github.com/aestek/haproxy-connect/consul"
-	"github.com/aestek/haproxy-connect/haproxy/halog"
 	"github.com/aestek/haproxy-connect/lib"
 	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/haproxytech/models"
@@ -48,23 +47,15 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 	}
 	h.haConfig = hc
 
-	hpCmd := exec.Command(
+	haCmd, err := runCommand(sd,
+		syscall.SIGUSR1,
 		h.opts.HAProxyBin,
 		"-f",
 		h.haConfig.HAProxy,
 	)
-	halog.Cmd("haproxy", hpCmd)
-	err = hpCmd.Start()
 	if err != nil {
 		return err
 	}
-	go func() {
-		err := hpCmd.Wait()
-		if err != nil {
-			log.Errorf("haproxy exited with error: %s", err)
-			sd.Shutdown()
-		}
-	}()
 
 	spoeAgent := spoe.New(NewSPOEHandler(h.consulClient, func() consul.Config {
 		return *h.currentCfg
@@ -82,29 +73,21 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 		}
 	}()
 
-	dpCmd := exec.Command(
+	_, err = runCommand(sd,
+		syscall.SIGTERM,
 		h.opts.DataplaneBin,
 		"--scheme", "unix",
 		"--socket-path", h.haConfig.DataplaneSock,
 		"--haproxy-bin", h.opts.HAProxyBin,
 		"--config-file", h.haConfig.HAProxy,
-		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", hpCmd.Process.Pid),
+		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", haCmd.Process.Pid),
 		"--reload-delay", "0",
 		"--userlist", "controller",
 		"--transaction-dir", h.haConfig.DataplaneTransactionDir,
 	)
-	halog.Cmd("dataplane", dpCmd)
-	err = dpCmd.Start()
 	if err != nil {
 		return err
 	}
-	go func() {
-		err := dpCmd.Wait()
-		if err != nil {
-			log.Errorf("dataplane exited with error: %s", err)
-			sd.Shutdown()
-		}
-	}()
 
 	h.dataplaneClient = &dataplaneClient{
 		addr:     "http://fake",
@@ -131,7 +114,6 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 
 		err := h.dataplaneClient.Ping()
 		if err != nil {
-			log.Error(err)
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}

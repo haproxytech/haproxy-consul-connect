@@ -57,9 +57,9 @@ func (d Downstream) Equal(o Downstream) bool {
 }
 
 type TLS struct {
-	TLSCert []byte
-	TLSKey  []byte
-	TLSCAs  [][]byte
+	Cert []byte
+	Key  []byte
+	CAs  [][]byte
 }
 
 func (t TLS) Equal(o TLS) bool {
