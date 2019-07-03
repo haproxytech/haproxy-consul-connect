@@ -51,6 +51,7 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		Ssl:            true,
 		SslCertificate: crtPath,
 		SslCafile:      caPath,
+		Verify:         models.BindVerifyRequired,
 	})
 	if err != nil {
 		return err

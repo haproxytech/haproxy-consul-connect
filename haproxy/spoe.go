@@ -14,9 +14,8 @@ import (
 )
 
 type SPOEHandler struct {
-	serviceName string
-	c           *api.Client
-	cfg         func() consul.Config
+	c   *api.Client
+	cfg func() consul.Config
 }
 
 func NewSPOEHandler(c *api.Client, cfg func() consul.Config) *SPOEHandler {
@@ -61,7 +60,7 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 
 			// Perform AuthZ
 			resp, err := h.c.Agent().ConnectAuthorize(&api.AgentAuthorizeParams{
-				Target:           h.serviceName,
+				Target:           cfg.ServiceName,
 				ClientCertURI:    certURI.URI().String(),
 				ClientCertSerial: connect.HexString(cert.SerialNumber.Bytes()),
 			})
