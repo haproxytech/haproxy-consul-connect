@@ -27,14 +27,6 @@ func NewSPOEHandler(c *api.Client, cfg func() consul.Config) *SPOEHandler {
 }
 
 func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
-	return []spoe.Action{
-		spoe.ActionSetVar{
-			Name:  "auth",
-			Scope: spoe.VarScopeSession,
-			Value: 0,
-		},
-	}, nil
-
 	cfg := h.cfg()
 	for _, m := range args {
 		if m.Name != "check-intentions" {

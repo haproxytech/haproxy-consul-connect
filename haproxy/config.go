@@ -16,13 +16,13 @@ import (
 
 var baseCfgTmpl = `
 global
-    master-worker
+	master-worker
     stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
     stats timeout 2m
     tune.ssl.default-dh-param 1024
 
 userlist controller
-    user admin password $5$aVnIFECJ$2QYP64eTTXZ1grSjwwdoQxK/AP8kcOflEO1Q5fc.5aA
+	user {{.DataplaneUser}} insecure-password {{.DataplanePass}}
 `
 
 const spoeConfTmpl = `
@@ -44,6 +44,13 @@ spoe-message check-intentions
     event on-frontend-tcp-request
 `
 
+type baseParams struct {
+	SocketPath    string
+	DataplaneUser string
+	DataplanePass string
+	LogsPath      string
+}
+
 type haConfig struct {
 	Base                    string
 	HAProxy                 string
@@ -52,6 +59,7 @@ type haConfig struct {
 	StatsSock               string
 	DataplaneSock           string
 	DataplaneTransactionDir string
+	LogsSock                string
 }
 
 func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
@@ -78,6 +86,7 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	cfg.StatsSock = path.Join(base, "haproxy.sock")
 	cfg.DataplaneSock = path.Join(base, "dataplane.sock")
 	cfg.DataplaneTransactionDir = path.Join(base, "dataplane-transactions")
+	cfg.LogsSock = path.Join(base, "logs.sock")
 
 	tmpl, err := template.New("cfg").Parse(baseCfgTmpl)
 	if err != nil {
@@ -91,7 +100,10 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	defer cfgFile.Close()
 
 	err = tmpl.Execute(cfgFile, baseParams{
-		SocketPath: cfg.StatsSock,
+		SocketPath:    cfg.StatsSock,
+		LogsPath:      cfg.LogsSock,
+		DataplaneUser: dataplaneUser,
+		DataplanePass: dataplanePass,
 	})
 	if err != nil {
 		return nil, err

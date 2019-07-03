@@ -1,10 +1,10 @@
 package haproxy
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
+	"os/exec"
 	"syscall"
 	"time"
 
@@ -14,13 +14,8 @@ import (
 	"github.com/haproxytech/models"
 	"github.com/hashicorp/consul/api"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/mcuadros/go-syslog.v2"
 )
-
-type baseParams struct {
-	SocketPath string
-	User       string
-	Password   string
-}
 
 type HAProxy struct {
 	opts            Options
@@ -47,52 +42,10 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 	}
 	h.haConfig = hc
 
-	haCmd, err := runCommand(sd,
-		syscall.SIGUSR1,
-		h.opts.HAProxyBin,
-		"-f",
-		h.haConfig.HAProxy,
-	)
-	if err != nil {
-		return err
-	}
-
-	spoeAgent := spoe.New(NewSPOEHandler(h.consulClient, func() consul.Config {
-		return *h.currentCfg
-	}).Handler)
-
-	lis, err := net.Listen("unix", h.haConfig.SPOESock)
-	if err != nil {
-		log.Fatal("error starting spoe agent:", err)
-	}
-
-	go func() {
-		err = spoeAgent.Serve(lis)
-		if err != nil {
-			log.Fatal("error starting spoe agent:", err)
-		}
-	}()
-
-	_, err = runCommand(sd,
-		syscall.SIGTERM,
-		h.opts.DataplaneBin,
-		"--scheme", "unix",
-		"--socket-path", h.haConfig.DataplaneSock,
-		"--haproxy-bin", h.opts.HAProxyBin,
-		"--config-file", h.haConfig.HAProxy,
-		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", haCmd.Process.Pid),
-		"--reload-delay", "0",
-		"--userlist", "controller",
-		"--transaction-dir", h.haConfig.DataplaneTransactionDir,
-	)
-	if err != nil {
-		return err
-	}
-
 	h.dataplaneClient = &dataplaneClient{
-		addr:     "http://fake",
-		userName: "admin",
-		password: "mypassword",
+		addr:     "http://unix-sock",
+		userName: dataplaneUser,
+		password: dataplanePass,
 		client: &http.Client{
 			Timeout: time.Second,
 			Transport: &http.Transport{
@@ -104,24 +57,28 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 		version: 1,
 	}
 
-	// wait for startup
-	for {
-		select {
-		case <-sd.Stop:
-			return nil
-		default:
-		}
-
-		err := h.dataplaneClient.Ping()
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		break
+	err = h.startLogger()
+	if err != nil {
+		return err
 	}
 
-	//go h.stats()
+	if h.opts.EnableIntentions {
+		err = h.startSPOA()
+		if err != nil {
+			return err
+		}
+	}
+
+	haCmd, err := h.startHAProxy(sd)
+	if err != nil {
+		return err
+	}
+	err = h.startDataplane(sd, haCmd)
+	if err != nil {
+		return err
+	}
+
+	//go (&Stats{h.dataplaneClient}).Run()
 
 	err = h.init()
 	if err != nil {
@@ -182,10 +139,23 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 		return err
 	}
 
+	currentUpstreams := map[string]struct{}{}
 	for _, up := range cfg.Upstreams {
+		currentUpstreams[up.Service] = struct{}{}
 		err := h.handleUpstream(tx, up)
 		if err != nil {
 			return err
+		}
+	}
+	if h.currentCfg != nil {
+		for _, up := range h.currentCfg.Upstreams {
+			if _, ok := currentUpstreams[up.Service]; ok {
+				continue
+			}
+			err := h.deleteUpstream(tx, up.Service)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -198,232 +168,95 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 	return nil
 }
 
-func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
-	if h.currentCfg != nil && h.currentCfg.Downstream.Equal(ds) {
-		return nil
-	}
+func (h *HAProxy) startLogger() error {
+	channel := make(syslog.LogPartsChannel)
+	handler := syslog.NewChannelHandler(channel)
 
-	feName := "front_downstream"
-	beName := "back_downstream"
+	server := syslog.NewServer()
+	server.SetFormat(syslog.RFC5424)
+	server.SetHandler(handler)
+	server.ListenUnixgram(h.haConfig.LogsSock)
+	server.Boot()
 
-	if h.currentCfg != nil {
-		err := tx.DeleteFrontend(feName)
-		if err != nil {
-			return err
+	go func(channel syslog.LogPartsChannel) {
+		for logParts := range channel {
+			log.Infof("%s: %s", logParts["app_name"], logParts["message"])
 		}
-		err = tx.DeleteBackend(beName)
-		if err != nil {
-			return err
-		}
-	}
-
-	timeout := int64(1000)
-	err := tx.CreateFrontend(models.Frontend{
-		Name:           feName,
-		DefaultBackend: beName,
-		ClientTimeout:  &timeout,
-		Mode:           models.FrontendModeHTTP,
-	})
-	if err != nil {
-		return err
-	}
-
-	crtPath, caPath, err := h.haConfig.CertsPath(ds.TLS)
-	if err != nil {
-		return err
-	}
-
-	port := int64(ds.LocalBindPort)
-	err = tx.CreateBind(feName, models.Bind{
-		Name:           fmt.Sprintf("%s_bind", feName),
-		Address:        ds.LocalBindAddress,
-		Port:           &port,
-		Ssl:            true,
-		SslCertificate: crtPath,
-		SslCafile:      caPath,
-	})
-	if err != nil {
-		return err
-	}
-
-	filterID := int64(0)
-	err = tx.CreateFilter("frontend", feName, models.Filter{
-		Type:       models.FilterTypeSpoe,
-		ID:         &filterID,
-		SpoeEngine: "intentions",
-		SpoeConfig: h.haConfig.SPOE,
-	})
-	if err != nil {
-		return err
-	}
-	err = tx.CreateTCPRequestRule("frontend", feName, models.TCPRequestRule{
-		Action:   models.TCPRequestRuleActionAccept,
-		Cond:     models.TCPRequestRuleCondIf,
-		CondTest: "{ var(sess.connect.auth) -m int eq 1 }",
-		Type:     models.TCPRequestRuleTypeContent,
-		ID:       &filterID,
-	})
-	if err != nil {
-		return err
-	}
-
-	err = tx.CreateBackend(models.Backend{
-		Name:           beName,
-		ServerTimeout:  &timeout,
-		ConnectTimeout: &timeout,
-		Mode:           models.BackendModeHTTP,
-	})
-	if err != nil {
-		return err
-	}
-
-	bePort := int64(ds.TargetPort)
-	err = tx.CreateServer(beName, models.Server{
-		Name:    "downstream_node",
-		Address: ds.TargetAddress,
-		Port:    &bePort,
-	})
-	if err != nil {
-		return err
-	}
+	}(channel)
 
 	return nil
 }
 
-func (h *HAProxy) handleUpstream(tx *tnx, up consul.Upstream) error {
-	feName := fmt.Sprintf("front_%s", up.Service)
-	beName := fmt.Sprintf("back_%s", up.Service)
-
-	var current *consul.Upstream
-	if h.currentCfg != nil {
-		for _, u := range h.currentCfg.Upstreams {
-			if u.Service == up.Service {
-				current = &u
-				break
-			}
-		}
-	}
-
-	backendDeleted := false
-	if current != nil && !current.Equal(up) {
-		err := tx.DeleteFrontend(feName)
-		if err != nil {
-			return err
-		}
-		err = tx.DeleteBackend(beName)
-		if err != nil {
-			return err
-		}
-		backendDeleted = true
-	}
-
-	if backendDeleted || current == nil {
-		timeout := int64(1000)
-		err := tx.CreateFrontend(models.Frontend{
-			Name:           feName,
-			DefaultBackend: beName,
-			ClientTimeout:  &timeout,
-			Mode:           models.FrontendModeHTTP,
-		})
-		if err != nil {
-			return err
-		}
-
-		port := int64(up.LocalBindPort)
-		err = tx.CreateBind(feName, models.Bind{
-			Name:    fmt.Sprintf("%s_bind", feName),
-			Address: up.LocalBindAddress,
-			Port:    &port,
-		})
-		if err != nil {
-			return err
-		}
-
-		err = tx.CreateBackend(models.Backend{
-			Name:           beName,
-			ServerTimeout:  &timeout,
-			ConnectTimeout: &timeout,
-			Balance: &models.Balance{
-				Algorithm: models.BalanceAlgorithmLeastconn,
-			},
-			Mode: models.BackendModeHTTP,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	currentServers := map[string]consul.UpstreamNode{}
-	if !backendDeleted && current != nil {
-		for _, b := range current.Nodes {
-			currentServers[fmt.Sprintf("%s:%d", b.Host, b.Port)] = b
-		}
-	}
-
-	certPath, caPath, err := h.haConfig.CertsPath(up.TLS)
+func (h *HAProxy) startHAProxy(sd *lib.Shutdown) (*exec.Cmd, error) {
+	haCmd, err := runCommand(sd,
+		syscall.SIGUSR1,
+		h.opts.HAProxyBin,
+		"-f",
+		h.haConfig.HAProxy,
+	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	newServers := map[string]consul.UpstreamNode{}
-	for _, srv := range up.Nodes {
-		id := fmt.Sprintf("%s:%d", srv.Host, srv.Port)
-		newServers[id] = srv
+	return haCmd, nil
+}
 
-		currentSrv, currentExists := currentServers[id]
+func (h *HAProxy) startSPOA() error {
+	spoeAgent := spoe.New(NewSPOEHandler(h.consulClient, func() consul.Config {
+		return *h.currentCfg
+	}).Handler)
 
-		changed := currentExists && currentSrv.Weight != srv.Weight
-		if !changed && currentExists {
-			fmt.Println("already exists")
-			continue
-		}
+	lis, err := net.Listen("unix", h.haConfig.SPOESock)
+	if err != nil {
+		log.Fatal("error starting spoe agent:", err)
+	}
 
-		f := tx.CreateServer
-		if changed {
-			f = tx.ReplaceServer
-		}
-
-		fmt.Println(id, srv.Port)
-		port := int64(srv.Port)
-		weight := int64(srv.Weight)
-		serverDef := models.Server{
-			Name:           hex.EncodeToString([]byte(id)),
-			Address:        srv.Host,
-			Port:           &port,
-			Weight:         &weight,
-			Ssl:            models.ServerSslEnabled,
-			SslCertificate: certPath,
-			SslCafile:      caPath,
-		}
-
-		err := f(beName, serverDef)
+	go func() {
+		err = spoeAgent.Serve(lis)
 		if err != nil {
-			return err
+			log.Fatal("error starting spoe agent:", err)
 		}
-	}
-
-	for current := range currentServers {
-		_, ok := newServers[current]
-		if !ok {
-			err := tx.DeleteServer(beName, hex.EncodeToString([]byte(current)))
-			if err != nil {
-				return err
-			}
-		}
-	}
+	}()
 
 	return nil
 }
 
-func (h *HAProxy) stats() {
-	for {
-		s, err := h.dataplaneClient.Stats()
+func (h *HAProxy) startDataplane(sd *lib.Shutdown, haCmd *exec.Cmd) error {
+	_, err := runCommand(sd,
+		syscall.SIGUSR1,
+		h.opts.DataplaneBin,
+		"--scheme", "unix",
+		"--socket-path", h.haConfig.DataplaneSock,
+		"--haproxy-bin", h.opts.HAProxyBin,
+		"--config-file", h.haConfig.HAProxy,
+		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", haCmd.Process.Pid),
+		"--reload-delay", "1",
+		"--userlist", "controller",
+		"--transaction-dir", h.haConfig.DataplaneTransactionDir,
+	)
+	if err != nil {
+		return err
+	}
+
+	// wait for startup
+	for i := time.Duration(0); i < (5*time.Second)/(100*time.Millisecond); i++ {
+		select {
+		case <-sd.Stop:
+			return nil
+		default:
+		}
+
+		err = h.dataplaneClient.Ping()
 		if err != nil {
-			log.Error(err)
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
-		fmt.Printf("%+v\n", s)
-		time.Sleep(time.Second)
+		break
 	}
+	if err != nil {
+		return fmt.Errorf("timeout waiting for dataplaneapi: %s", err)
+	}
+
+	return nil
 }

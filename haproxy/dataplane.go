@@ -14,6 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	dataplaneUser = "haproxy"
+	dataplanePass = "pass"
+)
+
 type dataplaneClient struct {
 	addr               string
 	userName, password string
@@ -107,6 +112,10 @@ func (t *tnx) CreateFilter(parentType, parentName string, filter models.Filter) 
 
 func (t *tnx) CreateTCPRequestRule(parentType, parentName string, rule models.TCPRequestRule) error {
 	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/tcp_request_rules?parent_type=%s&parent_name=%s&transaction_id=%s", parentType, parentName, t.txID), rule, nil)
+}
+
+func (t *tnx) CreateLogTargets(parentType, parentName string, rule models.LogTarget) error {
+	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s&transaction_id=%s", parentType, parentName, t.txID), rule, nil)
 }
 
 func (c *dataplaneClient) makeReq(method, url string, reqData, resData interface{}) error {

@@ -35,6 +35,7 @@ func runCommand(sd *lib.Shutdown, stopSig syscall.Signal, path string, args ...s
 		if atomic.LoadUint32(&exited) > 0 {
 			return
 		}
+		log.Infof("killing %s with sig %d", path, stopSig)
 		syscall.Kill(cmd.Process.Pid, stopSig)
 	}()
 

@@ -21,6 +21,7 @@ func main() {
 	haproxyBin := flag.String("haproxy", "haproxy", "Haproxy binary path")
 	dataplaneBin := flag.String("dataplane", "dataplane-api", "Dataplane binary path")
 	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Haproxy binary path")
+	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
 
@@ -44,9 +45,10 @@ func main() {
 	}()
 
 	hap := haproxy.New(consulClient, watcher.C, haproxy.Options{
-		HAProxyBin:    *haproxyBin,
-		DataplaneBin:  *dataplaneBin,
-		ConfigBaseDir: *haproxyCfgBasePath,
+		HAProxyBin:       *haproxyBin,
+		DataplaneBin:     *dataplaneBin,
+		ConfigBaseDir:    *haproxyCfgBasePath,
+		EnableIntentions: *enableIntentions,
 	})
 	sd.Add(1)
 	go func() {
