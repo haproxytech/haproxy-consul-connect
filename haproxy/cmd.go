@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"syscall"
 
-	"github.com/aestek/haproxy-connect/haproxy/halog"
-	"github.com/aestek/haproxy-connect/lib"
+	"github.com/criteo/haproxy-consul-connect/haproxy/halog"
+	"github.com/criteo/haproxy-consul-connect/lib"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -5,12 +5,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	haproxy "github.com/aestek/haproxy-connect/haproxy"
-	"github.com/aestek/haproxy-connect/lib"
+	haproxy "github.com/criteo/haproxy-consul-connect/haproxy"
+	"github.com/criteo/haproxy-consul-connect/lib"
 
 	"github.com/hashicorp/consul/api"
 
-	"github.com/aestek/haproxy-connect/consul"
+	"github.com/criteo/haproxy-consul-connect/consul"
 )
 
 func main() {

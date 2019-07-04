@@ -3,7 +3,7 @@ package haproxy
 import (
 	"fmt"
 
-	"github.com/aestek/haproxy-connect/consul"
+	"github.com/criteo/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
 )
 

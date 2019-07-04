@@ -9,8 +9,8 @@ import (
 
 	"text/template"
 
-	"github.com/aestek/haproxy-connect/consul"
-	"github.com/aestek/haproxy-connect/lib"
+	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/criteo/haproxy-consul-connect/lib"
 	log "github.com/sirupsen/logrus"
 )
 

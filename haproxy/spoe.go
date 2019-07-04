@@ -6,7 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/aestek/haproxy-connect/consul"
+	"github.com/criteo/haproxy-consul-connect/consul"
 	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/api"
