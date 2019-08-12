@@ -5,6 +5,8 @@ import (
 	"net"
 	"net/http"
 	"os/exec"
+	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/haproxytech/models"
 	"github.com/hashicorp/consul/api"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mcuadros/go-syslog.v2"
 )
@@ -78,13 +81,12 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 		return err
 	}
 
-	//go (&Stats{h.dataplaneClient}).Run()
-
 	err = h.init()
 	if err != nil {
 		return err
 	}
 
+	var statsOnce sync.Once
 	for {
 		select {
 		case c := <-h.cfgC:
@@ -92,6 +94,12 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 			if err != nil {
 				log.Error(err)
 			}
+			statsOnce.Do(func() {
+				err := h.startStats()
+				if err != nil {
+					log.Error(err)
+				}
+			})
 		case <-sd.Stop:
 			return nil
 		}
@@ -257,6 +265,60 @@ func (h *HAProxy) startDataplane(sd *lib.Shutdown, haCmd *exec.Cmd) error {
 	if err != nil {
 		return fmt.Errorf("timeout waiting for dataplaneapi: %s", err)
 	}
+
+	return nil
+}
+
+func (h *HAProxy) startStats() error {
+	if h.opts.StatsListenAddr == "" {
+		return nil
+	}
+	go func() {
+		if !h.opts.StatsRegisterService {
+			return
+		}
+
+		_, portStr, err := net.SplitHostPort(h.opts.StatsListenAddr)
+		if err != nil {
+			log.Errorf("cannot parse stats listen addr: %s", err)
+		}
+		port, _ := strconv.Atoi(portStr)
+
+		reg := func() {
+			err = h.consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
+				ID:   fmt.Sprintf("%s-connect-stats", h.currentCfg.ServiceID),
+				Name: fmt.Sprintf("%s-connect-stats", h.currentCfg.ServiceName),
+				Port: port,
+				Checks: api.AgentServiceChecks{
+					&api.AgentServiceCheck{
+						HTTP:                           fmt.Sprintf("http://localhost:%d/metrics", port),
+						Interval:                       (10 * time.Second).String(),
+						DeregisterCriticalServiceAfter: time.Minute.String(),
+					},
+				},
+				Tags: []string{"connect-stats"},
+			})
+			if err != nil {
+				log.Errorf("cannot register stats service: %s", err)
+			}
+		}
+
+		reg()
+
+		for range time.Tick(time.Minute) {
+			reg()
+		}
+	}()
+	go (&Stats{
+		dpapi:   h.dataplaneClient,
+		service: h.currentCfg.ServiceName,
+	}).Run()
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+
+		log.Infof("Starting stats server at %s", h.opts.StatsListenAddr)
+		http.ListenAndServe(h.opts.StatsListenAddr, nil)
+	}()
 
 	return nil
 }

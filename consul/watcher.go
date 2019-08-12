@@ -325,6 +325,7 @@ func (w *Watcher) genCfg() Config {
 
 	config := Config{
 		ServiceName: w.serviceName,
+		ServiceID:   w.service,
 		CAsPool:     w.certCAPool,
 		Downstream: Downstream{
 			LocalBindAddress: w.downstream.LocalBindAddress,

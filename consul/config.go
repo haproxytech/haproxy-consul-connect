@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	ServiceName string
+	ServiceID   string
 	CAsPool     *x509.CertPool
 	Downstream  Downstream
 	Upstreams   []Upstream
