@@ -5,7 +5,6 @@ go 1.12
 require (
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
 	github.com/criteo/haproxy-spoe-go v0.0.0-20190701135820-6e37602c179b
-	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/go-openapi/analysis v0.19.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.0 // indirect
@@ -13,7 +12,7 @@ require (
 	github.com/go-openapi/loads v0.19.0 // indirect
 	github.com/go-openapi/runtime v0.19.0 // indirect
 	github.com/go-openapi/spec v0.19.0 // indirect
-	github.com/haproxytech/models v1.0.1
+	github.com/haproxytech/models v1.2.0
 	github.com/hashicorp/consul v1.5.1
 	github.com/hashicorp/consul/api v1.1.0
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect

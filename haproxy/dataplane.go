@@ -58,8 +58,8 @@ func (c *dataplaneClient) Ping() error {
 	return c.makeReq(http.MethodGet, "/v1/specification", nil, nil)
 }
 
-func (c *dataplaneClient) Stats() ([]models.NativeStat, error) {
-	res := []models.NativeStat{}
+func (c *dataplaneClient) Stats() (models.NativeStats, error) {
+	res := models.NativeStats{}
 	return res, c.makeReq(http.MethodGet, "/v1/services/haproxy/stats/native", nil, &res)
 }
 

@@ -83,12 +83,14 @@ func (s *Stats) Run() {
 			log.Error(err)
 			continue
 		}
-		s.handle(stats)
+		for _, stat := range stats {
+			s.handle(stat)
+		}
 	}
 }
 
-func (s *Stats) handle(stats []models.NativeStat) {
-	for _, stats := range stats {
+func (s *Stats) handle(stats *models.NativeStatsCollection) {
+	for _, stats := range stats.Stats {
 		switch stats.Type {
 		case models.NativeStatTypeFrontend:
 			s.handleFrontend(stats)
@@ -107,7 +109,7 @@ func statVal(i *int64) float64 {
 	return float64(*i)
 }
 
-func (s *Stats) handleFrontend(stats models.NativeStat) {
+func (s *Stats) handleFrontend(stats *models.NativeStat) {
 	targetService := strings.TrimPrefix(stats.Name, "front_")
 
 	if targetService == "downstream" {
@@ -137,7 +139,7 @@ func (s *Stats) handleFrontend(stats models.NativeStat) {
 	}
 }
 
-func (s *Stats) handlebackend(stats models.NativeStat) {
+func (s *Stats) handlebackend(stats *models.NativeStat) {
 	targetService := strings.TrimPrefix(stats.Name, "back_")
 
 	if targetService == "downstream" {
@@ -147,6 +149,6 @@ func (s *Stats) handlebackend(stats models.NativeStat) {
 	}
 }
 
-func (s *Stats) handleServer(stats models.NativeStat) {
+func (s *Stats) handleServer(stats *models.NativeStat) {
 	resTimeOut.WithLabelValues(s.service, stats.Name).Set(statVal(stats.Stats.Ttime) / 1000)
 }
