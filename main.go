@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -17,7 +18,8 @@ func main() {
 	log.SetLevel(log.TraceLevel)
 
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
-	service := flag.String("sidecar-for", "", "The consul service to proxy")
+	service := flag.String("sidecar-for", "", "The consul service id to proxy")
+	serviceTag := flag.String("sidecar-for-tag", "", "The consul service id to proxy")
 	haproxyBin := flag.String("haproxy", "haproxy", "Haproxy binary path")
 	dataplaneBin := flag.String("dataplane", "dataplane-api", "Dataplane binary path")
 	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Haproxy binary path")
@@ -38,7 +40,30 @@ func main() {
 	consulClient, err := api.NewClient(consulConfig)
 	if err != nil {
 	}
-	watcher := consul.New(*service, consulClient)
+
+	var serviceID string
+	if *serviceTag != "" {
+		svcs, err := consulClient.Agent().Services()
+		if err != nil {
+			log.Fatal(err)
+		}
+	OUTER:
+		for _, s := range svcs {
+			if strings.HasSuffix(s.Service, "sidecar-proxy") {
+				continue
+			}
+			for _, t := range s.Tags {
+				if t == *serviceTag {
+					serviceID = s.ID
+					break OUTER
+				}
+			}
+		}
+	} else {
+		serviceID = *service
+	}
+
+	watcher := consul.New(serviceID, consulClient)
 	go func() {
 		if err := watcher.Run(); err != nil {
 			log.Error(err)
