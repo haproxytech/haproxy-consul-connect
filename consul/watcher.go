@@ -55,7 +55,7 @@ type Watcher struct {
 	downstream downstream
 	certCAs    [][]byte
 	certCAPool *x509.CertPool
-	leafs      map[string]*certLeaf
+	leaf       *certLeaf
 
 	update chan struct{}
 }
@@ -68,7 +68,6 @@ func New(service string, consul *api.Client) *Watcher {
 		C:         make(chan Config),
 		upstreams: make(map[string]*upstream),
 		update:    make(chan struct{}, 1),
-		leafs:     make(map[string]*certLeaf),
 	}
 }
 
@@ -129,7 +128,6 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 			w.lock.Unlock()
 			if !ok {
 				w.startUpstream(up)
-				w.watchLeaf(up.DestinationName)
 			}
 		}
 	}
@@ -228,11 +226,11 @@ func (w *Watcher) watchLeaf(service string) {
 		if changed {
 			log.Debugf("consul: leaf cert for service %s changed", service)
 			w.lock.Lock()
-			if _, ok := w.leafs[service]; !ok {
-				w.leafs[service] = &certLeaf{}
+			if w.leaf == nil {
+				w.leaf = &certLeaf{}
 			}
-			w.leafs[service].Cert = []byte(cert.CertPEM)
-			w.leafs[service].Key = []byte(cert.PrivateKeyPEM)
+			w.leaf.Cert = []byte(cert.CertPEM)
+			w.leaf.Key = []byte(cert.PrivateKeyPEM)
 			w.lock.Unlock()
 			w.notifyChanged()
 		}
@@ -335,8 +333,8 @@ func (w *Watcher) genCfg() Config {
 
 			TLS: TLS{
 				CAs:  w.certCAs,
-				Cert: w.leafs[w.serviceName].Cert,
-				Key:  w.leafs[w.serviceName].Key,
+				Cert: w.leaf.Cert,
+				Key:  w.leaf.Key,
 			},
 		},
 	}
@@ -349,8 +347,8 @@ func (w *Watcher) genCfg() Config {
 
 			TLS: TLS{
 				CAs:  w.certCAs,
-				Cert: w.leafs[w.serviceName].Cert,
-				Key:  w.leafs[w.serviceName].Key,
+				Cert: w.leaf.Cert,
+				Key:  w.leaf.Key,
 			},
 		}
 
