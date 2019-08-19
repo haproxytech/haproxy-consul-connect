@@ -113,7 +113,7 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 	targetService := strings.TrimPrefix(stats.Name, "front_")
 
 	if targetService == "downstream" {
-		reqInRate.WithLabelValues(s.service).Set(statVal(stats.Stats.Rate))
+		reqInRate.WithLabelValues(s.service).Set(statVal(stats.Stats.ReqRate))
 		connInCount.WithLabelValues(s.service).Set(statVal(stats.Stats.Scur))
 		bytesInIn.WithLabelValues(s.service).Set(statVal(stats.Stats.Bin))
 		bytesOutIn.WithLabelValues(s.service).Set(statVal(stats.Stats.Bout))
@@ -125,7 +125,7 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 		resInTotal.WithLabelValues(s.service, "5xx").Set(statVal(stats.Stats.Hrsp5xx))
 		resInTotal.WithLabelValues(s.service, "other").Set(statVal(stats.Stats.HrspOther))
 	} else {
-		reqOutRate.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Rate))
+		reqOutRate.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.ReqRate))
 		connOutCount.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Scur))
 		bytesInOut.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Bin))
 		bytesOutOut.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Bout))
