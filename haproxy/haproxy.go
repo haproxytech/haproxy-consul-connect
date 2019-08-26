@@ -27,14 +27,17 @@ type HAProxy struct {
 	cfgC            chan consul.Config
 	currentCfg      *consul.Config
 
+	upstreamServerSlots map[string][]upstreamSlot
+
 	haConfig *haConfig
 }
 
 func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProxy {
 	return &HAProxy{
-		opts:         opts,
-		consulClient: consulClient,
-		cfgC:         cfg,
+		opts:                opts,
+		consulClient:        consulClient,
+		cfgC:                cfg,
+		upstreamServerSlots: make(map[string][]upstreamSlot),
 	}
 }
 
@@ -107,13 +110,10 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 }
 
 func (h *HAProxy) init() error {
-	tx, err := h.dataplaneClient.Tnx()
-	if err != nil {
-		return err
-	}
+	tx := h.dataplaneClient.Tnx()
 
 	timeout := int64(30000)
-	err = tx.CreateBackend(models.Backend{
+	err := tx.CreateBackend(models.Backend{
 		Name:           "spoe_back",
 		ServerTimeout:  &timeout,
 		ConnectTimeout: &timeout,
@@ -137,12 +137,9 @@ func (h *HAProxy) init() error {
 }
 
 func (h *HAProxy) handleChange(cfg consul.Config) error {
-	tx, err := h.dataplaneClient.Tnx()
-	if err != nil {
-		return err
-	}
+	tx := h.dataplaneClient.Tnx()
 
-	err = h.handleDownstream(tx, cfg.Downstream)
+	err := h.handleDownstream(tx, cfg.Downstream)
 	if err != nil {
 		return err
 	}
