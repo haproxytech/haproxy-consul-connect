@@ -26,11 +26,10 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		}
 	}
 
-	timeout := int64(1000)
 	err := tx.CreateFrontend(models.Frontend{
 		Name:           feName,
 		DefaultBackend: beName,
-		ClientTimeout:  &timeout,
+		ClientTimeout:  &clientTimeout,
 		Mode:           models.FrontendModeHTTP,
 		Httplog:        true,
 	})
@@ -93,8 +92,8 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 
 	err = tx.CreateBackend(models.Backend{
 		Name:           beName,
-		ServerTimeout:  &timeout,
-		ConnectTimeout: &timeout,
+		ServerTimeout:  &serverTimeout,
+		ConnectTimeout: &connectTimeout,
 		Mode:           models.BackendModeHTTP,
 	})
 	if err != nil {

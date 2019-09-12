@@ -34,11 +34,10 @@ func (h *HAProxy) createUpstream(tx *tnx, up consul.Upstream) error {
 	feName := fmt.Sprintf("front_%s", up.Service)
 	beName := fmt.Sprintf("back_%s", up.Service)
 
-	timeout := int64(1000)
 	err := tx.CreateFrontend(models.Frontend{
 		Name:           feName,
 		DefaultBackend: beName,
-		ClientTimeout:  &timeout,
+		ClientTimeout:  &clientTimeout,
 		Mode:           models.FrontendModeHTTP,
 		Httplog:        true,
 	})
@@ -68,8 +67,8 @@ func (h *HAProxy) createUpstream(tx *tnx, up consul.Upstream) error {
 
 	err = tx.CreateBackend(models.Backend{
 		Name:           beName,
-		ServerTimeout:  &timeout,
-		ConnectTimeout: &timeout,
+		ServerTimeout:  &serverTimeout,
+		ConnectTimeout: &connectTimeout,
 		Balance: &models.Balance{
 			Algorithm: models.BalanceAlgorithmLeastconn,
 		},
