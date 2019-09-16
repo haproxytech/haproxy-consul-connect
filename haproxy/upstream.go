@@ -39,20 +39,23 @@ func (h *HAProxy) createUpstream(tx *tnx, up consul.Upstream) error {
 		DefaultBackend: beName,
 		ClientTimeout:  &clientTimeout,
 		Mode:           models.FrontendModeHTTP,
-		Httplog:        true,
+		Httplog:        h.opts.LogRequests,
 	})
 	if err != nil {
 		return err
 	}
-	logID := int64(0)
-	err = tx.CreateLogTargets("frontend", feName, models.LogTarget{
-		ID:       &logID,
-		Address:  h.haConfig.LogsSock,
-		Facility: models.LogTargetFacilityLocal0,
-		Format:   models.LogTargetFormatRfc5424,
-	})
-	if err != nil {
-		return err
+
+	if h.opts.LogRequests {
+		logID := int64(0)
+		err = tx.CreateLogTargets("frontend", feName, models.LogTarget{
+			ID:       &logID,
+			Address:  h.haConfig.LogsSock,
+			Facility: models.LogTargetFacilityLocal0,
+			Format:   models.LogTargetFormatRfc5424,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	port := int64(up.LocalBindPort)
@@ -77,15 +80,18 @@ func (h *HAProxy) createUpstream(tx *tnx, up consul.Upstream) error {
 	if err != nil {
 		return err
 	}
-	logID = int64(0)
-	err = tx.CreateLogTargets("backend", beName, models.LogTarget{
-		ID:       &logID,
-		Address:  h.haConfig.LogsSock,
-		Facility: models.LogTargetFacilityLocal0,
-		Format:   models.LogTargetFormatRfc5424,
-	})
-	if err != nil {
-		return err
+
+	if h.opts.LogRequests {
+		logID := int64(0)
+		err = tx.CreateLogTargets("backend", beName, models.LogTarget{
+			ID:       &logID,
+			Address:  h.haConfig.LogsSock,
+			Facility: models.LogTargetFacilityLocal0,
+			Format:   models.LogTargetFormatRfc5424,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -15,8 +15,7 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.TraceLevel)
-
+	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
 	service := flag.String("sidecar-for", "", "The consul service id to proxy")
 	serviceTag := flag.String("sidecar-for-tag", "", "The consul service id to proxy")
@@ -28,6 +27,12 @@ func main() {
 	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
+
+	ll, err := log.ParseLevel(*logLevel)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.SetLevel(ll)
 
 	sd := lib.NewShutdown()
 
@@ -78,6 +83,7 @@ func main() {
 		EnableIntentions:     *enableIntentions,
 		StatsListenAddr:      *statsListenAddr,
 		StatsRegisterService: *statsServiceRegister,
+		LogRequests:          ll == log.TraceLevel,
 	})
 	sd.Add(1)
 	go func() {

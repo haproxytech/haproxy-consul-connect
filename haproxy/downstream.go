@@ -31,7 +31,7 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		DefaultBackend: beName,
 		ClientTimeout:  &clientTimeout,
 		Mode:           models.FrontendModeHTTP,
-		Httplog:        true,
+		Httplog:        h.opts.LogRequests,
 	})
 	if err != nil {
 		return err
@@ -56,15 +56,17 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		return err
 	}
 
-	logID := int64(0)
-	err = tx.CreateLogTargets("frontend", feName, models.LogTarget{
-		ID:       &logID,
-		Address:  h.haConfig.LogsSock,
-		Facility: models.LogTargetFacilityLocal0,
-		Format:   models.LogTargetFormatRfc5424,
-	})
-	if err != nil {
-		return err
+	if h.opts.LogRequests {
+		logID := int64(0)
+		err = tx.CreateLogTargets("frontend", feName, models.LogTarget{
+			ID:       &logID,
+			Address:  h.haConfig.LogsSock,
+			Facility: models.LogTargetFacilityLocal0,
+			Format:   models.LogTargetFormatRfc5424,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	if h.opts.EnableIntentions {
@@ -78,6 +80,7 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		if err != nil {
 			return err
 		}
+
 		err = tx.CreateTCPRequestRule("frontend", feName, models.TCPRequestRule{
 			Action:   models.TCPRequestRuleActionAccept,
 			Cond:     models.TCPRequestRuleCondIf,
@@ -99,15 +102,18 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 	if err != nil {
 		return err
 	}
-	logID = int64(0)
-	err = tx.CreateLogTargets("backend", beName, models.LogTarget{
-		ID:       &logID,
-		Address:  h.haConfig.LogsSock,
-		Facility: models.LogTargetFacilityLocal0,
-		Format:   models.LogTargetFormatRfc5424,
-	})
-	if err != nil {
-		return err
+
+	if h.opts.LogRequests {
+		logID := int64(0)
+		err = tx.CreateLogTargets("backend", beName, models.LogTarget{
+			ID:       &logID,
+			Address:  h.haConfig.LogsSock,
+			Facility: models.LogTargetFacilityLocal0,
+			Format:   models.LogTargetFormatRfc5424,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	bePort := int64(ds.TargetPort)

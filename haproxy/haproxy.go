@@ -63,9 +63,11 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 		version: 1,
 	}
 
-	err = h.startLogger()
-	if err != nil {
-		return err
+	if h.opts.LogRequests {
+		err = h.startLogger()
+		if err != nil {
+			return err
+		}
 	}
 
 	if h.opts.EnableIntentions {
