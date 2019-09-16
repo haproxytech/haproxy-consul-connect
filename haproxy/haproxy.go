@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os/exec"
 	"strconv"
-	"sync"
 	"syscall"
 	"time"
 
@@ -42,6 +41,28 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
+	first := false
+	for {
+		select {
+		case c := <-h.cfgC:
+			if !first {
+				err := h.start(sd)
+				if err != nil {
+					return err
+				}
+				first = true
+			}
+			err := h.handleChange(c)
+			if err != nil {
+				log.Error(err)
+			}
+		case <-sd.Stop:
+			return nil
+		}
+	}
+}
+
+func (h *HAProxy) start(sd *lib.Shutdown) error {
 	hc, err := newHaConfig(h.opts.ConfigBaseDir, sd)
 	if err != nil {
 		return err
@@ -64,14 +85,14 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 	}
 
 	if h.opts.LogRequests {
-		err = h.startLogger()
+		err := h.startLogger()
 		if err != nil {
 			return err
 		}
 	}
 
 	if h.opts.EnableIntentions {
-		err = h.startSPOA()
+		err := h.startSPOA()
 		if err != nil {
 			return err
 		}
@@ -86,36 +107,10 @@ func (h *HAProxy) Run(sd *lib.Shutdown) error {
 		return err
 	}
 
-	err = h.init()
-	if err != nil {
-		return err
-	}
-
-	var statsOnce sync.Once
-	for {
-		select {
-		case c := <-h.cfgC:
-			err := h.handleChange(c)
-			if err != nil {
-				log.Error(err)
-			}
-			statsOnce.Do(func() {
-				err := h.startStats()
-				if err != nil {
-					log.Error(err)
-				}
-			})
-		case <-sd.Stop:
-			return nil
-		}
-	}
-}
-
-func (h *HAProxy) init() error {
 	tx := h.dataplaneClient.Tnx()
 
 	timeout := int64(30000)
-	err := tx.CreateBackend(models.Backend{
+	err = tx.CreateBackend(models.Backend{
 		Name:           "spoe_back",
 		ServerTimeout:  &timeout,
 		ConnectTimeout: &timeout,
@@ -133,6 +128,11 @@ func (h *HAProxy) init() error {
 	err = tx.Commit()
 	if err != nil {
 		return err
+	}
+
+	err = h.startStats()
+	if err != nil {
+		log.Error(err)
 	}
 
 	return nil
