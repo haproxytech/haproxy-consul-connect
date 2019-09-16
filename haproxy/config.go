@@ -21,7 +21,8 @@ global
     stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
     stats timeout 2m
 	tune.ssl.default-dh-param 1024
-	nbproc {{.NbProc}}
+	nbproc 1
+	nbthread {{.NbThread}}
 
 userlist controller
 	user {{.DataplaneUser}} insecure-password {{.DataplanePass}}
@@ -47,7 +48,7 @@ spoe-message check-intentions
 `
 
 type baseParams struct {
-	NbProc        int
+	NbThread      int
 	SocketPath    string
 	DataplaneUser string
 	DataplanePass string
@@ -103,7 +104,7 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	defer cfgFile.Close()
 
 	err = tmpl.Execute(cfgFile, baseParams{
-		NbProc:        runtime.GOMAXPROCS(0),
+		NbThread:      runtime.GOMAXPROCS(0),
 		SocketPath:    cfg.StatsSock,
 		LogsPath:      cfg.LogsSock,
 		DataplaneUser: dataplaneUser,
