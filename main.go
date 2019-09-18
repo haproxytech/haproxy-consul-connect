@@ -64,8 +64,13 @@ func main() {
 				}
 			}
 		}
-	} else {
+		if serviceID == "" {
+			log.Fatalf("No sidecar proxy found for service with tag %s", *serviceTag)
+		}
+	} else if *service != "" {
 		serviceID = *service
+	} else {
+		log.Fatalf("Please specify -sidecar-for or -sidecar-for-tag")
 	}
 
 	watcher := consul.New(serviceID, consulClient)
