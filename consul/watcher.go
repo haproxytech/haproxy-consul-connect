@@ -87,7 +87,7 @@ func (w *Watcher) Run() error {
 	w.ready.Add(4)
 
 	go w.watchCA()
-	go w.watchLeaf(w.serviceName)
+	go w.watchLeaf()
 	go w.watchService(proxyID, w.handleProxyChange)
 	go w.watchService(w.service, func(first bool, srv *api.AgentService) {
 		w.downstream.TargetPort = srv.Port
@@ -196,25 +196,18 @@ func (w *Watcher) removeUpstream(name string) {
 	w.lock.Unlock()
 }
 
-func (w *Watcher) watchLeaf(service string) {
-	log.Debugf("consul: watching leaf cert for %s", service)
+func (w *Watcher) watchLeaf() {
+	log.Debugf("consul: watching leaf cert for %s", w.serviceName)
 
 	var lastIndex uint64
 	first := true
 	for {
-		// if the upsteam was removed, stop watching its leaf
-		_, upstreamRunning := w.upstreams[service]
-		if service != w.serviceName && !upstreamRunning {
-			log.Debugf("consul: stopping watching leaf cert for %s", service)
-			return
-		}
-
-		cert, meta, err := w.consul.Agent().ConnectCALeaf(service, &api.QueryOptions{
+		cert, meta, err := w.consul.Agent().ConnectCALeaf(w.serviceName, &api.QueryOptions{
 			WaitTime:  10 * time.Minute,
 			WaitIndex: lastIndex,
 		})
 		if err != nil {
-			log.Errorf("consul error fetching leaf cert for service %s: %s", service, err)
+			log.Errorf("consul error fetching leaf cert for service %s: %s", w.serviceName, err)
 			time.Sleep(errorWaitTime)
 			lastIndex = 0
 			continue
@@ -224,7 +217,7 @@ func (w *Watcher) watchLeaf(service string) {
 		lastIndex = meta.LastIndex
 
 		if changed {
-			log.Debugf("consul: leaf cert for service %s changed", service)
+			log.Infof("consul: leaf cert for service %s changed, serial: %s, valid before: %s, valid after: %s", w.serviceName, cert.SerialNumber, cert.ValidBefore, cert.ValidAfter)
 			w.lock.Lock()
 			if w.leaf == nil {
 				w.leaf = &certLeaf{}
@@ -236,7 +229,7 @@ func (w *Watcher) watchLeaf(service string) {
 		}
 
 		if first {
-			log.Debugf("consul: leaf cert for %s ready", service)
+			log.Infof("consul: leaf cert for %s ready", w.serviceName)
 			w.ready.Done()
 			first = false
 		}
@@ -294,7 +287,7 @@ func (w *Watcher) watchCA() {
 		lastIndex = meta.LastIndex
 
 		if changed {
-			log.Debugf("consul: CA certs changed")
+			log.Infof("consul: CA certs changed, active root id: %s", caList.ActiveRootID)
 			w.lock.Lock()
 			w.certCAs = w.certCAs[:0]
 			w.certCAPool = x509.NewCertPool()
@@ -310,7 +303,7 @@ func (w *Watcher) watchCA() {
 		}
 
 		if first {
-			log.Debugf("consul: CA certs ready")
+			log.Infof("consul: CA certs ready")
 			w.ready.Done()
 			first = false
 		}
@@ -318,8 +311,12 @@ func (w *Watcher) watchCA() {
 }
 
 func (w *Watcher) genCfg() Config {
+	log.Debug("generating configuration...")
 	w.lock.Lock()
-	defer w.lock.Unlock()
+	defer func() {
+		w.lock.Unlock()
+		log.Debug("done generating configuration")
+	}()
 
 	config := Config{
 		ServiceName: w.serviceName,

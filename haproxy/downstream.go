@@ -5,10 +5,12 @@ import (
 
 	"github.com/criteo/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
+	log "github.com/sirupsen/logrus"
 )
 
 func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 	if h.currentCfg != nil && h.currentCfg.Downstream.Equal(ds) {
+		log.Debug("skipping downstream update because it did not change")
 		return nil
 	}
 

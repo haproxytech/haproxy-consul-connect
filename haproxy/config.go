@@ -152,6 +152,8 @@ func (h *haConfig) FilePath(content []byte) (string, error) {
 		return "", err
 	}
 
+	log.Debugf("wrote new config file %s", path)
+
 	return path, nil
 }
 

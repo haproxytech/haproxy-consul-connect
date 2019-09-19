@@ -114,6 +114,8 @@ func (h *HAProxy) handleUpstream(tx *tnx, up consul.Upstream) error {
 	if current != nil && !current.Equal(up) {
 		h.deleteUpstream(tx, up.Service)
 		backendDeleted = true
+	} else {
+		log.Debug("skipping upstream update because it did not change")
 	}
 
 	if backendDeleted || current == nil {

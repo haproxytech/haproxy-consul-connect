@@ -139,6 +139,8 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 }
 
 func (h *HAProxy) handleChange(cfg consul.Config) error {
+	log.Info("handling new configuration")
+
 	tx := h.dataplaneClient.Tnx()
 
 	err := h.handleDownstream(tx, cfg.Downstream)
@@ -171,6 +173,8 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 		return err
 	}
 	h.currentCfg = &cfg
+
+	log.Info("configuration updated")
 
 	return nil
 }
