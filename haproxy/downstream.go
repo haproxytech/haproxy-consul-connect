@@ -84,8 +84,8 @@ func (h *HAProxy) handleDownstream(tx *tnx, ds consul.Downstream) error {
 		}
 
 		err = tx.CreateTCPRequestRule("frontend", feName, models.TCPRequestRule{
-			Action:   models.TCPRequestRuleActionAccept,
-			Cond:     models.TCPRequestRuleCondIf,
+			Action:   models.TCPRequestRuleActionReject,
+			Cond:     models.TCPRequestRuleCondUnless,
 			CondTest: "{ var(sess.connect.auth) -m int eq 1 }",
 			Type:     models.TCPRequestRuleTypeContent,
 			ID:       &filterID,
