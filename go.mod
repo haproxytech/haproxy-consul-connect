@@ -20,6 +20,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.0.0-20180328130430-f504d69affe1
 	github.com/sirupsen/logrus v1.4.2
+	github.com/stretchr/testify v1.3.0
 	golang.org/x/net v0.0.0-20190607181551-461777fb6f67 // indirect
 	golang.org/x/sys v0.0.0-20190528012530-adf421d2caf4 // indirect
 	golang.org/x/text v0.3.2 // indirect

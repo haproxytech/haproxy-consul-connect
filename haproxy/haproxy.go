@@ -29,6 +29,8 @@ type HAProxy struct {
 	upstreamServerSlots map[string][]upstreamSlot
 
 	haConfig *haConfig
+
+	Ready chan (struct{})
 }
 
 func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProxy {
@@ -37,20 +39,23 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 		consulClient:        consulClient,
 		cfgC:                cfg,
 		upstreamServerSlots: make(map[string][]upstreamSlot),
+		Ready:               make(chan struct{}),
 	}
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
-	first := false
+	init := false
 	for {
 		select {
 		case c := <-h.cfgC:
-			if !first {
+			if !init {
+				h.currentCfg = &c
 				err := h.start(sd)
 				if err != nil {
 					return err
 				}
-				first = true
+				init = true
+				close(h.Ready)
 			}
 			err := h.handleChange(c)
 			if err != nil {
