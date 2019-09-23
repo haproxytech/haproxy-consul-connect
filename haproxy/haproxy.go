@@ -92,7 +92,7 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 		userName: dataplaneUser,
 		password: dataplanePass,
 		client: &http.Client{
-			Timeout: time.Second,
+			Timeout: 5 * time.Second,
 			Transport: &http.Transport{
 				Dial: func(proto, addr string) (conn net.Conn, err error) {
 					return net.Dial("unix", h.haConfig.DataplaneSock)
