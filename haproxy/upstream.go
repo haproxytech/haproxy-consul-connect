@@ -193,7 +193,7 @@ Next:
 		}
 
 		for i, slot := range serverSlots {
-			if slot.Host != "" {
+			if slot.Enabled {
 				continue
 			}
 
