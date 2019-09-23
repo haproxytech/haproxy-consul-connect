@@ -27,6 +27,8 @@ func (h *HAProxy) deleteUpstream(tx *tnx, service string) error {
 		return err
 	}
 
+	h.upstreamServerSlots[service] = nil
+
 	return nil
 }
 
