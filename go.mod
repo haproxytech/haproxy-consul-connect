@@ -6,6 +6,7 @@ require (
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
 	github.com/criteo/haproxy-spoe-go v0.0.0-20190925130734-97891c13d324
 	github.com/docker/go-units v0.4.0 // indirect
+	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9
 	github.com/go-openapi/analysis v0.19.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.0 // indirect
 	github.com/go-openapi/jsonreference v0.19.0 // indirect

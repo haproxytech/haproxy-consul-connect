@@ -24,9 +24,16 @@ func NewShutdown() *Shutdown {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		sig := <-sigs
-		log.Infof("Received %s", sig)
-		sd.Shutdown(sig.String())
+		i := 0
+		for sig := range sigs {
+			log.Infof("Received %s", sig)
+			sd.Shutdown(sig.String())
+
+			if i > 0 {
+				os.Exit(1)
+			}
+			i++
+		}
 	}()
 
 	return sd
