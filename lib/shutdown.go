@@ -25,16 +25,17 @@ func NewShutdown() *Shutdown {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		log.Infof("received %s, shutting down...", sig)
-		sd.Shutdown()
+		log.Infof("Received %s", sig)
+		sd.Shutdown(sig.String())
 	}()
 
 	return sd
 }
 
-func (h *Shutdown) Shutdown() {
+func (h *Shutdown) Shutdown(reason string) {
 	if atomic.SwapUint32(&h.stopped, 1) > 0 {
 		return
 	}
+	log.Infof("Shutting down because %s...", reason)
 	close(h.Stop)
 }

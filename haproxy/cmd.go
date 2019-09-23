@@ -1,12 +1,14 @@
 package haproxy
 
 import (
+	"fmt"
 	"os/exec"
 	"sync/atomic"
 	"syscall"
 
 	"github.com/criteo/haproxy-consul-connect/haproxy/halog"
 	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -18,7 +20,7 @@ func runCommand(sd *lib.Shutdown, stopSig syscall.Signal, path string, args ...s
 	err := cmd.Start()
 	if err != nil {
 		sd.Done()
-		return nil, err
+		return nil, errors.Wrapf(err, "error starting %s", path)
 	}
 	exited := uint32(0)
 	go func() {
@@ -27,7 +29,9 @@ func runCommand(sd *lib.Shutdown, stopSig syscall.Signal, path string, args ...s
 		atomic.StoreUint32(&exited, 1)
 		if err != nil {
 			log.Errorf("%s exited with error: %s", path, err)
-			sd.Shutdown()
+			sd.Shutdown(fmt.Sprintf("%s exited with error %s", path, err))
+		} else {
+			log.Errorf("%s exited", path)
 		}
 	}()
 	go func() {

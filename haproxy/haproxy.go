@@ -29,32 +29,50 @@ type HAProxy struct {
 	upstreamServerSlots map[string][]upstreamSlot
 
 	haConfig *haConfig
+
+	Ready chan (struct{})
 }
 
 func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProxy {
+	if opts.HAProxyBin == "" {
+		opts.HAProxyBin = "haproxy"
+	}
+	if opts.DataplaneBin == "" {
+		opts.DataplaneBin = "dataplaneapi"
+	}
 	return &HAProxy{
 		opts:                opts,
 		consulClient:        consulClient,
 		cfgC:                cfg,
 		upstreamServerSlots: make(map[string][]upstreamSlot),
+		Ready:               make(chan struct{}),
 	}
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
-	first := false
+	init := false
+	statsStarted := false
 	for {
 		select {
 		case c := <-h.cfgC:
-			if !first {
+			if !init {
 				err := h.start(sd)
 				if err != nil {
 					return err
 				}
-				first = true
+				init = true
+				close(h.Ready)
 			}
 			err := h.handleChange(c)
 			if err != nil {
 				log.Error(err)
+			}
+			if !statsStarted {
+				err = h.startStats()
+				if err != nil {
+					log.Error(err)
+				}
+				statsStarted = true
 			}
 		case <-sd.Stop:
 			return nil
@@ -130,11 +148,6 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 		return err
 	}
 
-	err = h.startStats()
-	if err != nil {
-		log.Error(err)
-	}
-
 	return nil
 }
 
@@ -200,7 +213,7 @@ func (h *HAProxy) startLogger() error {
 
 func (h *HAProxy) startHAProxy(sd *lib.Shutdown) (*exec.Cmd, error) {
 	haCmd, err := runCommand(sd,
-		syscall.SIGUSR1,
+		syscall.SIGTERM,
 		h.opts.HAProxyBin,
 		"-f",
 		h.haConfig.HAProxy,
@@ -234,7 +247,7 @@ func (h *HAProxy) startSPOA() error {
 
 func (h *HAProxy) startDataplane(sd *lib.Shutdown, haCmd *exec.Cmd) error {
 	_, err := runCommand(sd,
-		syscall.SIGUSR1,
+		syscall.SIGTERM,
 		h.opts.DataplaneBin,
 		"--scheme", "unix",
 		"--socket-path", h.haConfig.DataplaneSock,

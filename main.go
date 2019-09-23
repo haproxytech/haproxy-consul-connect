@@ -77,7 +77,7 @@ func main() {
 	go func() {
 		if err := watcher.Run(); err != nil {
 			log.Error(err)
-			sd.Shutdown()
+			sd.Shutdown(err.Error())
 		}
 	}()
 
@@ -95,7 +95,7 @@ func main() {
 		defer sd.Done()
 		if err := hap.Run(sd); err != nil {
 			log.Error(err)
-			sd.Shutdown()
+			sd.Shutdown(err.Error())
 		}
 	}()
 
