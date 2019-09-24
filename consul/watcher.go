@@ -313,15 +313,12 @@ func (w *Watcher) watchCA() {
 func (w *Watcher) genCfg() Config {
 	log.Debug("generating configuration...")
 	w.lock.Lock()
-	type ConfigurationInfo struct {
-		ServiceInstancesAlive int
-		ServiceInstancesTotal int
-	}
-	configInfo := ConfigurationInfo{}
+	serviceInstancesAlive := 0
+	serviceInstancesTotal := 0
 	defer func() {
 		w.lock.Unlock()
 		log.Debugf("done generating configuration, instances: %d/%d total",
-			configInfo.ServiceInstancesAlive, configInfo.ServiceInstancesTotal)
+			serviceInstancesAlive, serviceInstancesTotal)
 	}()
 
 	config := Config{
@@ -356,7 +353,7 @@ func (w *Watcher) genCfg() Config {
 		}
 
 		for _, s := range up.Nodes {
-			configInfo.ServiceInstancesTotal++
+			serviceInstancesTotal++
 			host := s.Service.Address
 			if host == "" {
 				host = s.Node.Address
@@ -374,7 +371,7 @@ func (w *Watcher) genCfg() Config {
 			if weight == 0 {
 				continue
 			}
-			configInfo.ServiceInstancesAlive++
+			serviceInstancesAlive++
 
 			upstream.Nodes = append(upstream.Nodes, UpstreamNode{
 				Host:   host,
