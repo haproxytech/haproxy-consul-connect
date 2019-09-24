@@ -237,7 +237,7 @@ func (w *Watcher) watchLeaf() {
 }
 
 func (w *Watcher) watchService(service string, handler func(first bool, srv *api.AgentService)) {
-	log.Infof("consul: wacthing service %s", service)
+	log.Infof("consul: watching service %s", service)
 
 	hash := ""
 	first := true
@@ -247,7 +247,7 @@ func (w *Watcher) watchService(service string, handler func(first bool, srv *api
 			WaitTime: 10 * time.Minute,
 		})
 		if err != nil {
-			log.Errorf("consul: error fetching service definition: %s", err)
+			log.Errorf("consul: error fetching service %s definition: %s", service, err)
 			time.Sleep(errorWaitTime)
 			hash = ""
 			continue
@@ -313,9 +313,15 @@ func (w *Watcher) watchCA() {
 func (w *Watcher) genCfg() Config {
 	log.Debug("generating configuration...")
 	w.lock.Lock()
+	type ConfigurationInfo struct {
+		ServiceInstancesAlive int
+		ServiceInstancesTotal int
+	}
+	configInfo := ConfigurationInfo{}
 	defer func() {
 		w.lock.Unlock()
-		log.Debug("done generating configuration")
+		log.Debugf("done generating configuration, instances: %d/%d total",
+			configInfo.ServiceInstancesAlive, configInfo.ServiceInstancesTotal)
 	}()
 
 	config := Config{
@@ -350,6 +356,7 @@ func (w *Watcher) genCfg() Config {
 		}
 
 		for _, s := range up.Nodes {
+			configInfo.ServiceInstancesTotal++
 			host := s.Service.Address
 			if host == "" {
 				host = s.Node.Address
@@ -367,6 +374,7 @@ func (w *Watcher) genCfg() Config {
 			if weight == 0 {
 				continue
 			}
+			configInfo.ServiceInstancesAlive++
 
 			upstream.Nodes = append(upstream.Nodes, UpstreamNode{
 				Host:   host,
