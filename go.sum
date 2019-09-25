@@ -65,10 +65,8 @@ github.com/containerd/continuity v0.0.0-20181203112020-004b46473808 h1:4BX8f882b
 github.com/containerd/continuity v0.0.0-20181203112020-004b46473808/go.mod h1:GL3xCUCBDV3CZiTSEKksMWbLE66hEyuu9qyDOOqM47Y=
 github.com/coredns/coredns v1.1.2 h1:bAFHrSsBeTeRG5W3Nf2su3lUGw7Npw2UKeCJm/3A638=
 github.com/coredns/coredns v1.1.2/go.mod h1:zASH/MVDgR6XZTbxvOnsZfffS+31vg6Ackf/wo1+AM0=
-github.com/criteo/haproxy-spoe-go v0.0.0-20190701135820-6e37602c179b h1:EgAU14vyO1ipkuKqlO1mAWUFkcB+fxL70CELEaeePuQ=
-github.com/criteo/haproxy-spoe-go v0.0.0-20190701135820-6e37602c179b/go.mod h1:XUtKIfxzaUXlPSFt2dL8YMPDTdhFMUNvwqqadVRFYns=
-github.com/criteo/haproxy-spoe-go v0.0.0-20190923130008-6d124101b540 h1:bhgk8abNPbWRo8hAsreVZlSz4T9tgWddKtVW8VRdWJo=
-github.com/criteo/haproxy-spoe-go v0.0.0-20190923130008-6d124101b540/go.mod h1:is3H74YRSY9At/k/Tmxx5/OGTqVXsCUlPiMTt8vTkxI=
+github.com/criteo/haproxy-spoe-go v0.0.0-20190925130734-97891c13d324 h1:EG4AakHHowlW2TkSX6URMubHsmRjd0HWl4LtI4pD7WA=
+github.com/criteo/haproxy-spoe-go v0.0.0-20190925130734-97891c13d324/go.mod h1:3h7I0HgdYy7SIlcSLEUVLpFTfHA0V4qK6QsQEKNLRkI=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -360,6 +358,8 @@ github.com/patrickmn/go-cache v0.0.0-20180527043350-9f6ff22cfff8/go.mod h1:3Qf8k
 github.com/pborman/uuid v1.2.0/go.mod h1:X/NO0urCmaxf9VXbdlT7C2Yzkj2IKimNn4k+gtPdI/k=
 github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+vxiaj6gdUUzhl4XmI=
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
+github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2 h1:JhzVVoYvbOACxoUmOs6V/G4D5nPVUW73rKvXxP4XUJc=
+github.com/phayes/freeport v0.0.0-20180830031419-95f893ade6f2/go.mod h1:iIss55rKnNBTvrwdmkUpLnDpZoAHvWaiq5+iMmen4AE=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
