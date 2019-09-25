@@ -29,10 +29,10 @@ func runCommand(sd *lib.Shutdown, stopSig syscall.Signal, path string, args ...s
 		atomic.StoreUint32(&exited, 1)
 		if err != nil {
 			log.Errorf("%s exited with error: %s", path, err)
-			sd.Shutdown(fmt.Sprintf("%s exited with error %s", path, err))
 		} else {
 			log.Errorf("%s exited", path)
 		}
+		sd.Shutdown(fmt.Sprintf("%s exited", path))
 	}()
 	go func() {
 		<-sd.Stop
