@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
 	"github.com/haproxytech/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -71,7 +72,7 @@ var (
 
 type Stats struct {
 	service string
-	dpapi   *dataplaneClient
+	dpapi   *dataplane.Dataplane
 }
 
 func (s *Stats) Run() {

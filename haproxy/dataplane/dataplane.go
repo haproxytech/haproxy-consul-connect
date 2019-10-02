@@ -1,4 +1,4 @@
-package haproxy
+package dataplane
 
 import (
 	"bytes"
@@ -14,12 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	dataplaneUser = "haproxy"
-	dataplanePass = "pass"
-)
-
-type dataplaneClient struct {
+type Dataplane struct {
 	addr               string
 	userName, password string
 	client             *http.Client
@@ -27,14 +22,24 @@ type dataplaneClient struct {
 	version            int
 }
 
+func New(addr, userName, password string, client *http.Client) *Dataplane {
+	return &Dataplane{
+		addr:     addr,
+		userName: userName,
+		password: password,
+		client:   client,
+		version:  1,
+	}
+}
+
 type tnx struct {
 	txID   string
-	client *dataplaneClient
+	client *Dataplane
 
 	after []func() error
 }
 
-func (c *dataplaneClient) Tnx() *tnx {
+func (c *Dataplane) Tnx() *tnx {
 	return &tnx{
 		client: c,
 	}
@@ -55,7 +60,7 @@ func (t *tnx) ensureTnx() error {
 	return nil
 }
 
-func (c *dataplaneClient) Info() (*models.ProcessInfo, error) {
+func (c *Dataplane) Info() (*models.ProcessInfo, error) {
 	res := &models.ProcessInfo{}
 	err := c.makeReq(http.MethodGet, "/services/haproxy/info", nil, res)
 	if err != nil {
@@ -64,11 +69,11 @@ func (c *dataplaneClient) Info() (*models.ProcessInfo, error) {
 	return res, nil
 }
 
-func (c *dataplaneClient) Ping() error {
+func (c *Dataplane) Ping() error {
 	return c.makeReq(http.MethodGet, "/v1/specification", nil, nil)
 }
 
-func (c *dataplaneClient) Stats() (models.NativeStats, error) {
+func (c *Dataplane) Stats() (models.NativeStats, error) {
 	res := models.NativeStats{}
 	return res, c.makeReq(http.MethodGet, "/v1/services/haproxy/stats/native", nil, &res)
 }
@@ -140,13 +145,13 @@ func (t *tnx) CreateServer(beName string, srv models.Server) error {
 }
 
 func (t *tnx) ReplaceServer(beName string, srv models.Server) error {
-	if err := t.ensureTnx(); err != nil {
-		return err
-	}
-	return t.client.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&transaction_id=%s", srv.Name, beName, t.txID), srv, nil)
+	t.After(func() error {
+		return t.client.ReplaceServer(beName, srv)
+	})
+	return nil
 }
 
-func (c *dataplaneClient) ReplaceServer(beName string, srv models.Server) error {
+func (c *Dataplane) ReplaceServer(beName string, srv models.Server) error {
 	err := c.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&version=%d", srv.Name, beName, c.version), srv, nil)
 	if err != nil {
 		return err
@@ -184,7 +189,7 @@ func (t *tnx) CreateLogTargets(parentType, parentName string, rule models.LogTar
 	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s&transaction_id=%s", parentType, parentName, t.txID), rule, nil)
 }
 
-func (c *dataplaneClient) makeReq(method, url string, reqData, resData interface{}) error {
+func (c *Dataplane) makeReq(method, url string, reqData, resData interface{}) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

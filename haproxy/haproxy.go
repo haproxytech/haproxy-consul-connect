@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
+	"github.com/criteo/haproxy-consul-connect/haproxy/state"
 	"github.com/criteo/haproxy-consul-connect/lib"
 	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/haproxytech/models"
@@ -21,12 +23,12 @@ import (
 
 type HAProxy struct {
 	opts            Options
-	dataplaneClient *dataplaneClient
+	dataplaneClient *dataplane.Dataplane
 	consulClient    *api.Client
 	cfgC            chan consul.Config
 	currentCfg      *consul.Config
 
-	upstreamServerSlots map[string][]upstreamSlot
+	oldState state.State
 
 	haConfig *haConfig
 
@@ -41,11 +43,10 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 		opts.DataplaneBin = "dataplaneapi"
 	}
 	return &HAProxy{
-		opts:                opts,
-		consulClient:        consulClient,
-		cfgC:                cfg,
-		upstreamServerSlots: make(map[string][]upstreamSlot),
-		Ready:               make(chan struct{}),
+		opts:         opts,
+		consulClient: consulClient,
+		cfgC:         cfg,
+		Ready:        make(chan struct{}),
 	}
 }
 
@@ -87,11 +88,11 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	}
 	h.haConfig = hc
 
-	h.dataplaneClient = &dataplaneClient{
-		addr:     "http://unix-sock",
-		userName: dataplaneUser,
-		password: dataplanePass,
-		client: &http.Client{
+	h.dataplaneClient = dataplane.New(
+		"http://unix-sock",
+		dataplaneUser,
+		dataplanePass,
+		&http.Client{
 			Timeout: 5 * time.Second,
 			Transport: &http.Transport{
 				Dial: func(proto, addr string) (conn net.Conn, err error) {
@@ -99,8 +100,7 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 				},
 			},
 		},
-		version: 1,
-	}
+	)
 
 	if h.opts.LogRequests {
 		err := h.startLogger()
@@ -147,47 +147,6 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	if err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func (h *HAProxy) handleChange(cfg consul.Config) error {
-	log.Info("handling new configuration")
-
-	tx := h.dataplaneClient.Tnx()
-
-	err := h.handleDownstream(tx, cfg.Downstream)
-	if err != nil {
-		return err
-	}
-
-	currentUpstreams := map[string]struct{}{}
-	for _, up := range cfg.Upstreams {
-		currentUpstreams[up.Service] = struct{}{}
-		err := h.handleUpstream(tx, up)
-		if err != nil {
-			return err
-		}
-	}
-	if h.currentCfg != nil {
-		for _, up := range h.currentCfg.Upstreams {
-			if _, ok := currentUpstreams[up.Service]; ok {
-				continue
-			}
-			err := h.deleteUpstream(tx, up.Service)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
-	h.currentCfg = &cfg
-
-	log.Info("configuration updated")
 
 	return nil
 }
