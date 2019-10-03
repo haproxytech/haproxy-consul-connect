@@ -80,7 +80,8 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 		return fmt.Sprintf("%s:%d", s.Host, s.Port)
 	}
 
-	servers := oldBackend.Servers
+	servers := make([]models.Server, len(oldBackend.Servers))
+	copy(servers, oldBackend.Servers)
 	serversIdx := index(servers, func(i int) string {
 		return idxHANode(servers[i])
 	})

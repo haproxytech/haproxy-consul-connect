@@ -186,6 +186,13 @@ var TestOpts = Options{
 
 var TestCertStore = fakeCertStore{}
 
+func TestEmpty(t *testing.T) {
+	generated, err := Generate(TestOpts, TestCertStore, State{}, consul.Config{})
+	require.Nil(t, err)
+
+	require.Equal(t, State{}, generated)
+}
+
 func TestSnapshotDownstream(t *testing.T) {
 	generated, err := Generate(TestOpts, TestCertStore, State{}, GetTestConsulConfig())
 	require.Nil(t, err)
@@ -199,13 +206,13 @@ func TestServerUpdate(t *testing.T) {
 
 	oldState := GetTestHAConfig()
 
+	// remove first server
 	expectedNewState := GetTestHAConfig()
 	expectedNewState.Backends[1].Servers[0].Maintenance = models.ServerMaintenanceEnabled
 	expectedNewState.Backends[1].Servers[0].Address = "127.0.0.1"
 	expectedNewState.Backends[1].Servers[0].Port = int64p(1)
 	expectedNewState.Backends[1].Servers[0].Weight = int64p(1)
 
-	// remove first server
 	generated, err := Generate(TestOpts, TestCertStore, oldState, consulCfg)
 	require.Nil(t, err)
 	require.Equal(t, expectedNewState, generated)

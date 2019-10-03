@@ -213,7 +213,7 @@ func (h *HAProxy) startDataplane(sd *lib.Shutdown, haCmd *exec.Cmd) error {
 		"--haproxy-bin", h.opts.HAProxyBin,
 		"--config-file", h.haConfig.HAProxy,
 		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", haCmd.Process.Pid),
-		"--reload-delay", "1",
+		"--reload-delay", "0",
 		"--userlist", "controller",
 		"--transaction-dir", h.haConfig.DataplaneTransactionDir,
 	)

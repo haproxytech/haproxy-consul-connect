@@ -21,6 +21,8 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 
 	tx := h.dataplaneClient.Tnx()
 
+	log.Debugf("applying new state: %+v", newState)
+
 	err = state.Apply(tx, h.oldState, newState)
 	if err != nil {
 		return err
@@ -33,6 +35,8 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 
 	h.oldState = newState
 	h.currentCfg = &cfg
+
+	log.Info("state successfully applied")
 
 	return nil
 }
