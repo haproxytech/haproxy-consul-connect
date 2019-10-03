@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os/exec"
 	"strconv"
-	"syscall"
 	"time"
 
 	"github.com/criteo/haproxy-consul-connect/consul"
 	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
+	"github.com/criteo/haproxy-consul-connect/haproxy/haproxy_cmd"
 	"github.com/criteo/haproxy-consul-connect/haproxy/state"
 	"github.com/criteo/haproxy-consul-connect/lib"
 	spoe "github.com/criteo/haproxy-spoe-go"
-	"github.com/haproxytech/models"
 	"github.com/hashicorp/consul/api"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -88,20 +86,6 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	}
 	h.haConfig = hc
 
-	h.dataplaneClient = dataplane.New(
-		"http://unix-sock",
-		dataplaneUser,
-		dataplanePass,
-		&http.Client{
-			Timeout: 5 * time.Second,
-			Transport: &http.Transport{
-				Dial: func(proto, addr string) (conn net.Conn, err error) {
-					return net.Dial("unix", h.haConfig.DataplaneSock)
-				},
-			},
-		},
-	)
-
 	if h.opts.LogRequests {
 		err := h.startLogger()
 		if err != nil {
@@ -116,37 +100,19 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 		}
 	}
 
-	haCmd, err := h.startHAProxy(sd)
-	if err != nil {
-		return err
-	}
-	err = h.startDataplane(sd, haCmd)
-	if err != nil {
-		return err
-	}
-
-	tx := h.dataplaneClient.Tnx()
-
-	timeout := int64(30000)
-	err = tx.CreateBackend(models.Backend{
-		Name:           "spoe_back",
-		ServerTimeout:  &timeout,
-		ConnectTimeout: &timeout,
-		Mode:           models.BackendModeTCP,
+	dpc, err := haproxy_cmd.Start(sd, haproxy_cmd.Config{
+		HAProxyPath:             h.opts.HAProxyBin,
+		HAProxyConfigPath:       hc.HAProxy,
+		DataplanePath:           h.opts.DataplaneBin,
+		DataplaneTransactionDir: hc.DataplaneTransactionDir,
+		DataplaneSock:           hc.DataplaneSock,
+		DataplaneUser:           dataplaneUser,
+		DataplanePass:           dataplanePass,
 	})
 	if err != nil {
 		return err
 	}
-
-	err = tx.CreateServer("spoe_back", models.Server{
-		Name:    "haproxy_connect",
-		Address: fmt.Sprintf("unix@%s", h.haConfig.SPOESock),
-	})
-
-	err = tx.Commit()
-	if err != nil {
-		return err
-	}
+	h.dataplaneClient = dpc
 
 	return nil
 }
@@ -170,20 +136,6 @@ func (h *HAProxy) startLogger() error {
 	return nil
 }
 
-func (h *HAProxy) startHAProxy(sd *lib.Shutdown) (*exec.Cmd, error) {
-	haCmd, err := runCommand(sd,
-		syscall.SIGTERM,
-		h.opts.HAProxyBin,
-		"-f",
-		h.haConfig.HAProxy,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return haCmd, nil
-}
-
 func (h *HAProxy) startSPOA() error {
 	spoeAgent := spoe.New(NewSPOEHandler(h.consulClient, func() consul.Config {
 		return *h.currentCfg
@@ -200,46 +152,6 @@ func (h *HAProxy) startSPOA() error {
 			log.Fatal("error starting spoe agent:", err)
 		}
 	}()
-
-	return nil
-}
-
-func (h *HAProxy) startDataplane(sd *lib.Shutdown, haCmd *exec.Cmd) error {
-	_, err := runCommand(sd,
-		syscall.SIGTERM,
-		h.opts.DataplaneBin,
-		"--scheme", "unix",
-		"--socket-path", h.haConfig.DataplaneSock,
-		"--haproxy-bin", h.opts.HAProxyBin,
-		"--config-file", h.haConfig.HAProxy,
-		"--reload-cmd", fmt.Sprintf("kill -SIGUSR2 %d", haCmd.Process.Pid),
-		"--reload-delay", "0",
-		"--userlist", "controller",
-		"--transaction-dir", h.haConfig.DataplaneTransactionDir,
-	)
-	if err != nil {
-		return err
-	}
-
-	// wait for startup
-	for i := time.Duration(0); i < (5*time.Second)/(100*time.Millisecond); i++ {
-		select {
-		case <-sd.Stop:
-			return nil
-		default:
-		}
-
-		err = h.dataplaneClient.Ping()
-		if err != nil {
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
-
-		break
-	}
-	if err != nil {
-		return fmt.Errorf("timeout waiting for dataplaneapi: %s", err)
-	}
 
 	return nil
 }

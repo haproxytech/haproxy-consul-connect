@@ -46,7 +46,7 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 			Roots: cfg.CAsPool,
 		})
 		if err != nil {
-			log.Warn("connect: error validating certificate: %s", err)
+			log.Warnf("connect: error validating certificate: %s", err)
 		}
 
 		authorized := err == nil

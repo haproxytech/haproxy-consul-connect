@@ -1,6 +1,10 @@
 package state
 
 import (
+	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/criteo/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
 )
@@ -10,6 +14,7 @@ type Options struct {
 	LogRequests      bool
 	LogSocket        string
 	SPOEConfigPath   string
+	SPOESocket       string
 }
 
 type CertificateStore interface {
@@ -35,6 +40,23 @@ func Generate(opts Options, certStore CertificateStore, oldState State, cfg cons
 
 	var err error
 
+	if opts.EnableIntentions {
+		newState.Backends = append(newState.Backends, Backend{
+			Backend: models.Backend{
+				Name:           "spoe_back",
+				ServerTimeout:  int64p(30000),
+				ConnectTimeout: int64p(30000),
+				Mode:           models.BackendModeTCP,
+			},
+			Servers: []models.Server{
+				models.Server{
+					Name:    "haproxy_connect",
+					Address: fmt.Sprintf("unix@%s", opts.SPOESocket),
+				},
+			},
+		})
+	}
+
 	newState, err = generateDownstream(opts, certStore, cfg.Downstream, newState)
 	if err != nil {
 		return newState, err
@@ -46,6 +68,14 @@ func Generate(opts Options, certStore CertificateStore, oldState State, cfg cons
 			return newState, err
 		}
 	}
+
+	sort.Slice(newState.Frontends, func(i, j int) bool {
+		return strings.Compare(newState.Frontends[i].Frontend.Name, newState.Frontends[j].Frontend.Name) < 0
+	})
+
+	sort.Slice(newState.Backends, func(i, j int) bool {
+		return strings.Compare(newState.Backends[i].Backend.Name, newState.Backends[j].Backend.Name) < 0
+	})
 
 	return newState, nil
 }

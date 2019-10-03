@@ -14,6 +14,7 @@ func (h *HAProxy) handleChange(cfg consul.Config) error {
 		LogRequests:      h.opts.LogRequests,
 		LogSocket:        h.haConfig.LogsSock,
 		SPOEConfigPath:   h.haConfig.SPOE,
+		SPOESocket:       h.haConfig.SPOESock,
 	}, h.haConfig, h.oldState, cfg)
 	if err != nil {
 		return err
