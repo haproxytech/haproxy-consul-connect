@@ -1,6 +1,8 @@
 package state
 
 import (
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/criteo/haproxy-consul-connect/consul"
@@ -39,7 +41,7 @@ func GetTestConsulConfig() consul.Config {
 }
 
 func GetTestHAConfig(baseCfg string) State {
-	return State{
+	s := State{
 		Frontends: []Frontend{
 
 			// downstream front
@@ -186,6 +188,16 @@ func GetTestHAConfig(baseCfg string) State {
 			},
 		},
 	}
+
+	sort.Slice(s.Frontends, func(i, j int) bool {
+		return strings.Compare(s.Frontends[i].Frontend.Name, s.Frontends[j].Frontend.Name) < 0
+	})
+
+	sort.Slice(s.Backends, func(i, j int) bool {
+		return strings.Compare(s.Backends[i].Backend.Name, s.Backends[j].Backend.Name) < 0
+	})
+
+	return s
 }
 
 var TestOpts = Options{
