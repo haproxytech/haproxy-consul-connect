@@ -1,6 +1,8 @@
 package state
 
 import (
+	"fmt"
+
 	"github.com/criteo/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
 )
@@ -10,6 +12,7 @@ type Options struct {
 	LogRequests      bool
 	LogSocket        string
 	SPOEConfigPath   string
+	SPOESocket       string
 }
 
 type CertificateStore interface {
@@ -34,6 +37,23 @@ func Generate(opts Options, certStore CertificateStore, oldState State, cfg cons
 	newState := State{}
 
 	var err error
+
+	if opts.EnableIntentions {
+		newState.Backends = append(newState.Backends, Backend{
+			Backend: models.Backend{
+				Name:           "spoe_back",
+				ServerTimeout:  int64p(30000),
+				ConnectTimeout: int64p(30000),
+				Mode:           models.BackendModeTCP,
+			},
+			Servers: []models.Server{
+				models.Server{
+					Name:    "haproxy_connect",
+					Address: fmt.Sprintf("unix@%s", opts.SPOESocket),
+				},
+			},
+		})
+	}
 
 	newState, err = generateDownstream(opts, certStore, cfg.Downstream, newState)
 	if err != nil {

@@ -38,7 +38,7 @@ func GetTestConsulConfig() consul.Config {
 	}
 }
 
-func GetTestHAConfig() State {
+func GetTestHAConfig(baseCfg string) State {
 	return State{
 		Frontends: []Frontend{
 
@@ -56,13 +56,13 @@ func GetTestHAConfig() State {
 					Address:        "127.0.0.2",
 					Port:           int64p(9999),
 					Ssl:            true,
-					SslCafile:      "ca_path",
-					SslCertificate: "cert_path",
+					SslCafile:      baseCfg + "/ca",
+					SslCertificate: baseCfg + "/cert",
 					Verify:         models.BindVerifyRequired,
 				},
 				LogTarget: &models.LogTarget{
 					ID:       int64p(0),
-					Address:  "/logs/socket",
+					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
@@ -71,7 +71,7 @@ func GetTestHAConfig() State {
 						ID:         int64p(0),
 						Type:       models.FilterTypeSpoe,
 						SpoeEngine: "intentions",
-						SpoeConfig: "/spoe/config",
+						SpoeConfig: baseCfg + "/spoe",
 					},
 					Rule: models.TCPRequestRule{
 						ID:       int64p(0),
@@ -99,7 +99,7 @@ func GetTestHAConfig() State {
 				},
 				LogTarget: &models.LogTarget{
 					ID:       int64p(0),
-					Address:  "/logs/socket",
+					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
@@ -125,7 +125,7 @@ func GetTestHAConfig() State {
 				},
 				LogTarget: &models.LogTarget{
 					ID:       int64p(0),
-					Address:  "/logs/socket",
+					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
@@ -149,8 +149,8 @@ func GetTestHAConfig() State {
 						Port:           int64p(8080),
 						Weight:         int64p(5),
 						Ssl:            models.ServerSslEnabled,
-						SslCafile:      "ca_path",
-						SslCertificate: "cert_path",
+						SslCafile:      baseCfg + "/ca",
+						SslCertificate: baseCfg + "/cert",
 						Verify:         models.BindVerifyRequired,
 						Maintenance:    models.ServerMaintenanceDisabled,
 					},
@@ -160,18 +160,29 @@ func GetTestHAConfig() State {
 						Port:           int64p(8081),
 						Weight:         int64p(8),
 						Ssl:            models.ServerSslEnabled,
-						SslCafile:      "ca_path",
-						SslCertificate: "cert_path",
+						SslCafile:      baseCfg + "/ca",
+						SslCertificate: baseCfg + "/cert",
 						Verify:         models.BindVerifyRequired,
 						Maintenance:    models.ServerMaintenanceDisabled,
 					},
 				},
 				LogTarget: &models.LogTarget{
 					ID:       int64p(0),
-					Address:  "/logs/socket",
+					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
+			},
+
+			// spoe backend
+			Backend{
+				Backend: models.Backend{
+					Name:           "spoe_back",
+					ServerTimeout:  &serverTimeout,
+					ConnectTimeout: &connectTimeout,
+					Mode:           models.BackendModeTCP,
+				},
+				Servers: []models.Server{},
 			},
 		},
 	}
@@ -180,34 +191,27 @@ func GetTestHAConfig() State {
 var TestOpts = Options{
 	EnableIntentions: true,
 	LogRequests:      true,
-	LogSocket:        "/logs/socket",
-	SPOEConfigPath:   "/spoe/config",
+	LogSocket:        "//logs.sock",
+	SPOEConfigPath:   "//spoe",
 }
 
 var TestCertStore = fakeCertStore{}
-
-func TestEmpty(t *testing.T) {
-	generated, err := Generate(TestOpts, TestCertStore, State{}, consul.Config{})
-	require.Nil(t, err)
-
-	require.Equal(t, State{}, generated)
-}
 
 func TestSnapshotDownstream(t *testing.T) {
 	generated, err := Generate(TestOpts, TestCertStore, State{}, GetTestConsulConfig())
 	require.Nil(t, err)
 
-	require.Equal(t, GetTestHAConfig(), generated)
+	require.Equal(t, GetTestHAConfig("/"), generated)
 }
 
 func TestServerUpdate(t *testing.T) {
 	consulCfg := GetTestConsulConfig()
 	consulCfg.Upstreams[0].Nodes = consulCfg.Upstreams[0].Nodes[1:]
 
-	oldState := GetTestHAConfig()
+	oldState := GetTestHAConfig("/")
 
 	// remove first server
-	expectedNewState := GetTestHAConfig()
+	expectedNewState := GetTestHAConfig("/")
 	expectedNewState.Backends[1].Servers[0].Maintenance = models.ServerMaintenanceEnabled
 	expectedNewState.Backends[1].Servers[0].Address = "127.0.0.1"
 	expectedNewState.Backends[1].Servers[0].Port = int64p(1)
@@ -220,7 +224,7 @@ func TestServerUpdate(t *testing.T) {
 	// re-add first server
 	generated, err = Generate(TestOpts, TestCertStore, generated, GetTestConsulConfig())
 	require.Nil(t, err)
-	require.Equal(t, GetTestHAConfig(), generated)
+	require.Equal(t, GetTestHAConfig("/"), generated)
 
 	// add another one
 	consulCfg = GetTestConsulConfig()
@@ -230,7 +234,7 @@ func TestServerUpdate(t *testing.T) {
 		Weight: 10,
 	})
 
-	expectedNewState = GetTestHAConfig()
+	expectedNewState = GetTestHAConfig("/")
 	expectedNewState.Backends[1].Servers = append(expectedNewState.Backends[1].Servers,
 		models.Server{
 			Name:           "srv_2",
@@ -238,8 +242,8 @@ func TestServerUpdate(t *testing.T) {
 			Port:           int64p(8082),
 			Weight:         int64p(10),
 			Ssl:            models.ServerSslEnabled,
-			SslCafile:      "ca_path",
-			SslCertificate: "cert_path",
+			SslCafile:      "//ca",
+			SslCertificate: "//cert",
 			Verify:         models.BindVerifyRequired,
 			Maintenance:    models.ServerMaintenanceDisabled,
 		},
@@ -249,8 +253,8 @@ func TestServerUpdate(t *testing.T) {
 			Port:           int64p(1),
 			Weight:         int64p(1),
 			Ssl:            models.ServerSslEnabled,
-			SslCafile:      "ca_path",
-			SslCertificate: "cert_path",
+			SslCafile:      "//ca",
+			SslCertificate: "//cert",
 			Verify:         models.BindVerifyRequired,
 			Maintenance:    models.ServerMaintenanceEnabled,
 		},
@@ -264,5 +268,5 @@ func TestServerUpdate(t *testing.T) {
 type fakeCertStore struct{}
 
 func (s fakeCertStore) CertsPath(t consul.TLS) (string, string, error) {
-	return "ca_path", "cert_path", nil
+	return "//ca", "//cert", nil
 }
