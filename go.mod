@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
 	github.com/criteo/haproxy-spoe-go v0.0.0-20190925130734-97891c13d324
+	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9
 	github.com/go-openapi/analysis v0.19.0 // indirect
@@ -25,5 +26,6 @@ require (
 	golang.org/x/net v0.0.0-20190607181551-461777fb6f67 // indirect
 	golang.org/x/sys v0.0.0-20190528012530-adf421d2caf4 // indirect
 	golang.org/x/text v0.3.2 // indirect
+	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/mcuadros/go-syslog.v2 v2.2.1
 )

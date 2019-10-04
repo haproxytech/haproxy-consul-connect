@@ -23,14 +23,15 @@ type HAProxy struct {
 	opts            Options
 	dataplaneClient *dataplane.Dataplane
 	consulClient    *api.Client
-	cfgC            chan consul.Config
-	currentCfg      *consul.Config
 
-	oldState state.State
+	cfgC chan consul.Config
+
+	currentConsulConfig *consul.Config
+	currentHAProxyState state.State
 
 	haConfig *haConfig
 
-	Ready chan (struct{})
+	Ready chan struct{}
 }
 
 func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProxy {
@@ -49,34 +50,7 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
-	init := false
-	statsStarted := false
-	for {
-		select {
-		case c := <-h.cfgC:
-			if !init {
-				err := h.start(sd)
-				if err != nil {
-					return err
-				}
-				init = true
-				close(h.Ready)
-			}
-			err := h.handleChange(c)
-			if err != nil {
-				log.Error(err)
-			}
-			if !statsStarted {
-				err = h.startStats()
-				if err != nil {
-					log.Error(err)
-				}
-				statsStarted = true
-			}
-		case <-sd.Stop:
-			return nil
-		}
-	}
+	return h.watch(sd)
 }
 
 func (h *HAProxy) start(sd *lib.Shutdown) error {
@@ -114,6 +88,11 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	}
 	h.dataplaneClient = dpc
 
+	err = h.startStats()
+	if err != nil {
+		log.Error(err)
+	}
+
 	return nil
 }
 
@@ -138,7 +117,7 @@ func (h *HAProxy) startLogger() error {
 
 func (h *HAProxy) startSPOA() error {
 	spoeAgent := spoe.New(NewSPOEHandler(h.consulClient, func() consul.Config {
-		return *h.currentCfg
+		return *h.currentConsulConfig
 	}).Handler)
 
 	lis, err := net.Listen("unix", h.haConfig.SPOESock)
@@ -173,8 +152,8 @@ func (h *HAProxy) startStats() error {
 
 		reg := func() {
 			err = h.consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
-				ID:   fmt.Sprintf("%s-connect-stats", h.currentCfg.ServiceID),
-				Name: fmt.Sprintf("%s-connect-stats", h.currentCfg.ServiceName),
+				ID:   fmt.Sprintf("%s-connect-stats", h.currentConsulConfig.ServiceID),
+				Name: fmt.Sprintf("%s-connect-stats", h.currentConsulConfig.ServiceName),
 				Port: port,
 				Checks: api.AgentServiceChecks{
 					&api.AgentServiceCheck{
@@ -198,7 +177,7 @@ func (h *HAProxy) startStats() error {
 	}()
 	go (&Stats{
 		dpapi:   h.dataplaneClient,
-		service: h.currentCfg.ServiceName,
+		service: h.currentConsulConfig.ServiceName,
 	}).Run()
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())

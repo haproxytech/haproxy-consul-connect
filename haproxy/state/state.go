@@ -1,6 +1,10 @@
 package state
 
-import "github.com/haproxytech/models"
+import (
+	"reflect"
+
+	"github.com/haproxytech/models"
+)
 
 type FrontendFilter struct {
 	Filter models.Filter
@@ -23,6 +27,10 @@ type Backend struct {
 type State struct {
 	Frontends []Frontend
 	Backends  []Backend
+}
+
+func (s State) Equal(o State) bool {
+	return reflect.DeepEqual(s, o)
 }
 
 func (s State) findBackend(name string) (Backend, bool) {
