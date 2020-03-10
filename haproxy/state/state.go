@@ -3,7 +3,7 @@ package state
 import (
 	"reflect"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 type FrontendFilter struct {

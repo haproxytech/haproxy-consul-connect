@@ -29,7 +29,7 @@ func (h *fakeHook) Fire(e *logrus.Entry) error {
 }
 
 func ensureLogIsPresent(t *testing.T, hook *fakeHook, expectedLevel logrus.Level, prefix, msg string) {
-	haproxyLog("haproxy", fmt.Sprintf("%s%s", prefix, msg))
+	haproxyLog(fmt.Sprintf("%s%s", prefix, msg))
 	require.Equal(t, fmt.Sprintf("haproxy: %s", msg), hook.lastMessage[expectedLevel])
 }
 

@@ -3,7 +3,7 @@ package state
 import (
 	"reflect"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 func Apply(ha HAProxy, old, new State) error {

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplanelog"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/halog"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 )
 
@@ -33,7 +35,7 @@ type Config struct {
 }
 
 func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
-	haCmd, err := runCommand(sd,
+	haCmd, err := runCommand(sd, halog.New,
 		cfg.HAProxyPath,
 		"-f",
 		cfg.HAProxyConfigPath,
@@ -42,7 +44,7 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 		return nil, err
 	}
 
-	cmd, err := runCommand(sd,
+	cmd, err := runCommand(sd, dataplanelog.New,
 		cfg.DataplanePath,
 		"--scheme", "unix",
 		"--socket-path", cfg.DataplaneSock,
@@ -52,6 +54,8 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 		"--reload-delay", "1",
 		"--userlist", "controller",
 		"--transaction-dir", cfg.DataplaneTransactionDir,
+		"--log-format", "JSON",
+		"--log-level", "info",
 	)
 	cleanupHAProxy := func() {
 		haCmd.Process.Signal(os.Kill)
