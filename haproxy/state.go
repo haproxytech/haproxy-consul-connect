@@ -97,6 +97,7 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 
 			newState, err := state.Generate(state.Options{
 				EnableIntentions: h.opts.EnableIntentions,
+				EnableModeTcp:	  h.opts.EnableModeTcp,
 				LogRequests:      h.opts.LogRequests,
 				LogSocket:        h.haConfig.LogsSock,
 				SPOEConfigPath:   h.haConfig.SPOE,

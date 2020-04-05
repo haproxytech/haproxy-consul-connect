@@ -10,19 +10,25 @@ import (
 func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Downstream, state State) (State, error) {
 	feName := "front_downstream"
 	beName := "back_downstream"
+	feMode := models.FrontendModeHTTP
+	beMode := models.BackendModeHTTP
 
 	caPath, crtPath, err := certStore.CertsPath(cfg.TLS)
 	if err != nil {
 		return state, err
 	}
 
+	if opts.EnableModeTcp {
+		feMode = models.FrontendModeTCP
+		beMode = models.BackendModeTCP
+	}
 	// Main config
 	fe := Frontend{
 		Frontend: models.Frontend{
 			Name:           feName,
 			DefaultBackend: beName,
 			ClientTimeout:  &clientTimeout,
-			Mode:           models.FrontendModeHTTP,
+			Mode:           feMode,
 			Httplog:        opts.LogRequests,
 		},
 		Bind: models.Bind{
@@ -73,7 +79,7 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 			Name:           beName,
 			ServerTimeout:  &serverTimeout,
 			ConnectTimeout: &connectTimeout,
-			Mode:           models.BackendModeHTTP,
+			Mode:           beMode,
 		},
 		Servers: []models.Server{
 			models.Server{

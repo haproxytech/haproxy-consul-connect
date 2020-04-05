@@ -6,6 +6,7 @@ type Options struct {
 	ConfigBaseDir        string
 	SPOEAddress          string
 	EnableIntentions     bool
+	EnableModeTcp	     bool
 	StatsListenAddr      string
 	StatsRegisterService bool
 	LogRequests          bool

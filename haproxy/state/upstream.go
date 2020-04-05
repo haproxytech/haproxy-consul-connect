@@ -10,14 +10,22 @@ import (
 func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstream, oldState, newState State) (State, error) {
 	feName := fmt.Sprintf("front_%s", cfg.Service)
 	beName := fmt.Sprintf("back_%s", cfg.Service)
+	feMode := models.FrontendModeHTTP
+	beMode := models.BackendModeHTTP
 
 	fePort64 := int64(cfg.LocalBindPort)
+
+	if opts.EnableModeTcp {
+		feMode = models.FrontendModeTCP
+		beMode = models.BackendModeTCP
+	}
+
 	fe := Frontend{
 		Frontend: models.Frontend{
 			Name:           feName,
 			DefaultBackend: beName,
 			ClientTimeout:  &clientTimeout,
-			Mode:           models.FrontendModeHTTP,
+			Mode:           feMode,
 			Httplog:        opts.LogRequests,
 		},
 		Bind: models.Bind{
@@ -45,7 +53,7 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 			Balance: &models.Balance{
 				Algorithm: models.BalanceAlgorithmLeastconn,
 			},
-			Mode: models.BackendModeHTTP,
+			Mode: beMode,
 		},
 	}
 	if opts.LogRequests && opts.LogSocket != "" {
