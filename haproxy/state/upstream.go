@@ -15,7 +15,7 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 
 	fePort64 := int64(cfg.LocalBindPort)
 
-	if opts.EnableModeTcp {
+	if cfg.Protocol != "" && cfg.Protocol == "tcp" {
 		feMode = models.FrontendModeTCP
 		beMode = models.BackendModeTCP
 	}

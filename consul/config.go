@@ -18,6 +18,7 @@ type Upstream struct {
 	Service          string
 	LocalBindAddress string
 	LocalBindPort    int
+	Protocol	string
 
 	TLS
 

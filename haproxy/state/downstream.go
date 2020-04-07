@@ -18,10 +18,6 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 		return state, err
 	}
 
-	if opts.EnableModeTcp {
-		feMode = models.FrontendModeTCP
-		beMode = models.BackendModeTCP
-	}
 	// Main config
 	fe := Frontend{
 		Frontend: models.Frontend{

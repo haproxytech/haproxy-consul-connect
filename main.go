@@ -25,7 +25,6 @@ func main() {
 	statsListenAddr := flag.String("stats-addr", "", "Listen addr for stats server")
 	statsServiceRegister := flag.Bool("stats-service-register", false, "Register a consul service for connect stats")
 	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
-	modeTcp := flag.Bool("mode-tcp", false, "Enable mode tcp")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
 
@@ -87,7 +86,6 @@ func main() {
 		DataplaneBin:         *dataplaneBin,
 		ConfigBaseDir:        *haproxyCfgBasePath,
 		EnableIntentions:     *enableIntentions,
-		EnableModeTcp:	      *modeTcp,
 		StatsListenAddr:      *statsListenAddr,
 		StatsRegisterService: *statsServiceRegister,
 		LogRequests:          ll == log.TraceLevel,

@@ -22,6 +22,7 @@ type upstream struct {
 	LocalBindPort    int
 	Service          string
 	Datacenter       string
+	Protocol	 string
 	Nodes            []*api.ServiceEntry
 
 	done bool
@@ -151,6 +152,10 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 		LocalBindPort:    up.LocalBindPort,
 		Service:          up.DestinationName,
 		Datacenter:       up.Datacenter,
+	}
+
+	if up.Config["protocol"] != nil {
+		u.Protocol =  up.Config["protocol"].(string)
 	}
 
 	w.lock.Lock()
@@ -330,7 +335,6 @@ func (w *Watcher) genCfg() Config {
 			LocalBindPort:    w.downstream.LocalBindPort,
 			TargetAddress:    w.downstream.TargetAddress,
 			TargetPort:       w.downstream.TargetPort,
-
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
@@ -344,14 +348,13 @@ func (w *Watcher) genCfg() Config {
 			Service:          up.Service,
 			LocalBindAddress: up.LocalBindAddress,
 			LocalBindPort:    up.LocalBindPort,
-
+			Protocol:	  up.Protocol,
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
 				Key:  w.leaf.Key,
 			},
 		}
-
 		for _, s := range up.Nodes {
 			serviceInstancesTotal++
 			host := s.Service.Address

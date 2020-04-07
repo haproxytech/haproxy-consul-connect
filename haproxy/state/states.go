@@ -11,7 +11,6 @@ import (
 
 type Options struct {
 	EnableIntentions bool
-	EnableModeTcp	 bool
 	LogRequests      bool
 	LogSocket        string
 	SPOEConfigPath   string
