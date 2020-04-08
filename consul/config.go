@@ -18,6 +18,7 @@ type Upstream struct {
 	Service          string
 	LocalBindAddress string
 	LocalBindPort    int
+	Protocol         string
 
 	TLS
 
@@ -47,6 +48,7 @@ func (n UpstreamNode) Equal(o UpstreamNode) bool {
 type Downstream struct {
 	LocalBindAddress string
 	LocalBindPort    int
+	Protocol         string
 	TargetAddress    string
 	TargetPort       int
 

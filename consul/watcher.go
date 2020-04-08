@@ -21,6 +21,7 @@ type upstream struct {
 	LocalBindPort    int
 	Service          string
 	Datacenter       string
+	Protocol         string
 	Nodes            []*api.ServiceEntry
 
 	done bool
@@ -29,6 +30,7 @@ type upstream struct {
 type downstream struct {
 	LocalBindAddress string
 	LocalBindPort    int
+	Protocol         string
 	TargetAddress    string
 	TargetPort       int
 }
@@ -111,6 +113,13 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	w.downstream.LocalBindAddress = defaultDownstreamBindAddr
 	w.downstream.LocalBindPort = srv.Port
 	w.downstream.TargetAddress = defaultUpstreamBindAddr
+
+	if srv.Proxy != nil && srv.Proxy.Config != nil {
+		if c, ok := srv.Proxy.Config["protocol"].(string); ok {
+			w.downstream.Protocol = c
+		}
+	}
+
 	if srv.Connect != nil && srv.Connect.SidecarService != nil && srv.Connect.SidecarService.Proxy != nil && srv.Connect.SidecarService.Proxy.Config != nil {
 		if b, ok := srv.Connect.SidecarService.Proxy.Config["bind_address"].(string); ok {
 			w.downstream.LocalBindAddress = b
@@ -153,6 +162,10 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 		LocalBindPort:    up.LocalBindPort,
 		Service:          up.DestinationName,
 		Datacenter:       up.Datacenter,
+	}
+
+	if up.Config["protocol"] != nil {
+		u.Protocol = up.Config["protocol"].(string)
 	}
 
 	w.lock.Lock()
@@ -332,7 +345,7 @@ func (w *Watcher) genCfg() Config {
 			LocalBindPort:    w.downstream.LocalBindPort,
 			TargetAddress:    w.downstream.TargetAddress,
 			TargetPort:       w.downstream.TargetPort,
-
+			Protocol:         w.downstream.Protocol,
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
@@ -346,14 +359,13 @@ func (w *Watcher) genCfg() Config {
 			Service:          up.Service,
 			LocalBindAddress: up.LocalBindAddress,
 			LocalBindPort:    up.LocalBindPort,
-
+			Protocol:         up.Protocol,
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
 				Key:  w.leaf.Key,
 			},
 		}
-
 		for _, s := range up.Nodes {
 			serviceInstancesTotal++
 			host := s.Service.Address
