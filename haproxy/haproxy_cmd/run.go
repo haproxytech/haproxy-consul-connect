@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
@@ -29,8 +30,11 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 	if err != nil {
 		return nil, err
 	}
+	if haCmd.Process == nil {
+		return nil, fmt.Errorf("%s was not started", cfg.HAProxyPath)
+	}
 
-	_, err = runCommand(sd,
+	cmd, err := runCommand(sd,
 		cfg.DataplanePath,
 		"--scheme", "unix",
 		"--socket-path", cfg.DataplaneSock,
@@ -41,8 +45,16 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 		"--userlist", "controller",
 		"--transaction-dir", cfg.DataplaneTransactionDir,
 	)
+	cleanupHAProxy := func() {
+		haCmd.Process.Signal(os.Kill)
+	}
 	if err != nil {
+		cleanupHAProxy()
 		return nil, err
+	}
+	if cmd.Process == nil {
+		cleanupHAProxy()
+		return nil, fmt.Errorf("%s failed to start", cfg.DataplanePath)
 	}
 
 	dataplaneClient := dataplane.New(

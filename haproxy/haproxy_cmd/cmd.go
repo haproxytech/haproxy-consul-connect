@@ -24,6 +24,10 @@ func runCommand(sd *lib.Shutdown, cmdPath string, args ...string) (*exec.Cmd, er
 		sd.Done()
 		return nil, errors.Wrapf(err, "error starting %s", file)
 	}
+	if cmd.Process == nil {
+		sd.Done()
+		return nil, errors.Wrapf(err, "Process '%s' could not be started", file)
+	}
 	exited := uint32(0)
 	go func() {
 		defer sd.Done()
