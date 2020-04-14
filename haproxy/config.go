@@ -113,16 +113,19 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 		DataplanePass: dataplanePass,
 	})
 	if err != nil {
+		sd.Done()
 		return nil, err
 	}
 
 	spoeCfgFile, err := os.OpenFile(cfg.SPOE, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
+		sd.Done()
 		return nil, err
 	}
 	defer spoeCfgFile.Close()
 	_, err = spoeCfgFile.WriteString(spoeConfTmpl)
 	if err != nil {
+		sd.Done()
 		return nil, err
 	}
 

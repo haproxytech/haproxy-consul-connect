@@ -27,7 +27,6 @@ func startAgent(t *testing.T, sd *lib.Shutdown) *api.Client {
 	go func() {
 		defer sd.Done()
 		<-sd.Stop
-
 		a.Shutdown()
 	}()
 
@@ -179,8 +178,14 @@ func testGetReq(t *testing.T, port int, expectedCode int, exptectedContent strin
 	}
 }
 
-func wait(c ...chan struct{}) {
+func wait(sd *lib.Shutdown, c ...chan struct{}) {
 	for _, o := range c {
-		<-o
+		select {
+		case <-sd.Stop:
+			return
+		case <-o:
+			continue
+
+		}
 	}
 }
