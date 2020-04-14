@@ -64,7 +64,7 @@ func startConnectService(t *testing.T, sd *lib.Shutdown, client *api.Client, reg
 
 	errs := make(chan error, 2)
 
-	watcher := consul.New(reg.ID, client)
+	watcher := consul.New(reg.ID, client, consul.NewTestingLogger(t))
 	go func() {
 		err := watcher.Run()
 		if err != nil {

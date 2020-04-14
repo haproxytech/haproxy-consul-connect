@@ -14,6 +14,28 @@ import (
 	"github.com/criteo/haproxy-consul-connect/consul"
 )
 
+type consulLogger struct{}
+
+// Debugf Display debug message
+func (consulLogger) Debugf(format string, args ...interface{}) {
+	log.Debugf(format, args...)
+}
+
+// Infof Display info message
+func (consulLogger) Infof(format string, args ...interface{}) {
+	log.Infof(format, args...)
+}
+
+// Warnf Display warning message
+func (consulLogger) Warnf(format string, args ...interface{}) {
+	log.Infof(format, args...)
+}
+
+// Errorf Display error message
+func (consulLogger) Errorf(format string, args ...interface{}) {
+	log.Errorf(format, args...)
+}
+
 func main() {
 	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
@@ -73,7 +95,8 @@ func main() {
 		log.Fatalf("Please specify -sidecar-for or -sidecar-for-tag")
 	}
 
-	watcher := consul.New(serviceID, consulClient)
+	consulLogger := &consulLogger{}
+	watcher := consul.New(serviceID, consulClient, consulLogger)
 	go func() {
 		if err := watcher.Run(); err != nil {
 			log.Error(err)
