@@ -48,3 +48,7 @@ Usage of ./haproxy-consul-connect:
   -token string
     	Consul ACL token./haproxy-consul-connect --help
 ```
+
+## Contributing
+
+For commit messages and general style please follow the haproxy project's [CONTRIBUTING guide](https://github.com/haproxy/haproxy/blob/master/CONTRIBUTING) and use that where applicable.
