@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -13,6 +15,15 @@ import (
 
 	"github.com/criteo/haproxy-consul-connect/consul"
 )
+
+// Version is set by Travis build
+var Version string = "v0.1.9-Dev"
+
+// BuildTime is set by Travis
+var BuildTime string = "2020-01-01T00:00:00Z"
+
+// GitHash The last reference Hash from Git
+var GitHash string = "unknown"
 
 type consulLogger struct{}
 
@@ -37,6 +48,7 @@ func (consulLogger) Errorf(format string, args ...interface{}) {
 }
 
 func main() {
+	versionFlag := flag.Bool("version", false, "Show version and exit")
 	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
 	service := flag.String("sidecar-for", "", "The consul service id to proxy")
@@ -49,6 +61,11 @@ func main() {
 	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
+
+	if versionFlag != nil && *versionFlag {
+		fmt.Printf("Version: %s ; BuildTime: %s ; GitHash: %s\n", Version, BuildTime, GitHash)
+		os.Exit(0)
+	}
 
 	ll, err := log.ParseLevel(*logLevel)
 	if err != nil {
