@@ -81,7 +81,6 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 
 		err = dataplaneClient.Ping()
 		if err != nil {
-			fmt.Println("*****\n* SOUCHAY: wait for dataplane to be up\n*****")
 			time.Sleep(100 * time.Millisecond)
 			continue
 		}
