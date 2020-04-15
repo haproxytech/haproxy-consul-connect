@@ -14,12 +14,11 @@ import (
 
 func TestSetup(t *testing.T) {
 	sd := lib.NewShutdown()
+	client := startAgent(t, sd)
 	defer func() {
 		sd.Shutdown("test end")
 		sd.Wait()
 	}()
-
-	client := startAgent(t, sd)
 
 	csd, _, upstreamPorts := startConnectService(t, sd, client, &api.AgentServiceRegistration{
 		Name: "source",
@@ -50,9 +49,7 @@ func TestSetup(t *testing.T) {
 	})
 
 	startServer(t, sd, servicePort, "hello connect")
-
-	wait(csd, tsd)
-
+	wait(sd, csd, tsd)
 	res, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d", upstreamPorts["target"]))
 	require.NoError(t, err)
 	require.Equal(t, 200, res.StatusCode)
