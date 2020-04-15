@@ -6,7 +6,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
 	log "github.com/sirupsen/logrus"
 )
 

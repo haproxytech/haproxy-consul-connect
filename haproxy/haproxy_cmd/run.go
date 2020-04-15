@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 )
 
 type Config struct {

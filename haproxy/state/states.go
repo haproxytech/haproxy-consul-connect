@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
 )
 

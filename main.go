@@ -8,12 +8,12 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	haproxy "github.com/criteo/haproxy-consul-connect/haproxy"
-	"github.com/criteo/haproxy-consul-connect/lib"
+	haproxy "github.com/haproxytech/haproxy-consul-connect/haproxy"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 
 	"github.com/hashicorp/consul/api"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
 )
 
 // Version is set by Travis build
