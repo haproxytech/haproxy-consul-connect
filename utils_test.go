@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
-	haproxy "github.com/criteo/haproxy-consul-connect/haproxy"
-	"github.com/criteo/haproxy-consul-connect/lib"
 	"github.com/facebookgo/freeport"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
+	haproxy "github.com/haproxytech/haproxy-consul-connect/haproxy"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/hashicorp/consul/agent"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/testrpc"

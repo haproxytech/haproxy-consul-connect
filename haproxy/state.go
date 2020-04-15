@@ -4,9 +4,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
-	"github.com/criteo/haproxy-consul-connect/haproxy/state"
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/state"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/d4l3k/messagediff.v1"
 )

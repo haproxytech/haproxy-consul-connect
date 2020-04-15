@@ -7,7 +7,7 @@ import (
 
 	"net/http"
 
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/require"
 )

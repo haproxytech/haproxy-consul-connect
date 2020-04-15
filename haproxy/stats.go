@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/criteo/haproxy-consul-connect/haproxy/dataplane"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
 	"github.com/haproxytech/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"

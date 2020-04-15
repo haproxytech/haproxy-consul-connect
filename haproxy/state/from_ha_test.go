@@ -5,8 +5,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/criteo/haproxy-consul-connect/haproxy/haproxy_cmd"
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/stretchr/testify/require"
 )
 

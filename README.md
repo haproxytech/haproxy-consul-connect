@@ -13,7 +13,7 @@ Three components are used :
 
 To handle intentions, HAProxy Connect, sets up a SPOE filter on the application public frontend. On each connection HAProxy checks with HAProxy Connect that the incomming connection is authorized. HAProxy Connect parses the request certificates and in turn calls the Consul agent to know wether it should tell HAProxy to allow or deny the connection.
 
-![architecture](https://github.com/criteo/haproxy-consul-connect/blob/master/docs/architecture.png)
+![architecture](https://github.com/haproxytech/haproxy-consul-connect/blob/master/docs/architecture.png)
 
 ## Requirements
 

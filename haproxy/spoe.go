@@ -6,8 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
 	spoe "github.com/criteo/haproxy-spoe-go"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"

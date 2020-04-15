@@ -101,8 +101,8 @@ func FromHAProxy(ha HAProxyRead) (State, error) {
 		}
 
 		state.Backends = append(state.Backends, Backend{
-			Backend: b,
-			Servers: servers,
+			Backend:   b,
+			Servers:   servers,
 			LogTarget: lt,
 		})
 	}

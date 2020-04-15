@@ -8,7 +8,7 @@ import (
 
 	"text/template"
 
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	log "github.com/sirupsen/logrus"
 )
 

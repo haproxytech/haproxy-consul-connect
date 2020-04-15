@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/criteo/haproxy-consul-connect/consul"
+	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
 	"github.com/stretchr/testify/require"
 )

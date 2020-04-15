@@ -3,7 +3,7 @@ package haproxy_cmd
 import (
 	"testing"
 
-	"github.com/criteo/haproxy-consul-connect/lib"
+	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/stretchr/testify/assert"
 )
 

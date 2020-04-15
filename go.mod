@@ -1,4 +1,4 @@
-module github.com/criteo/haproxy-consul-connect
+module github.com/haproxytech/haproxy-consul-connect
 
 go 1.12
 
