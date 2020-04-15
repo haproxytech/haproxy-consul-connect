@@ -47,27 +47,4 @@ Usage of ./haproxy-consul-connect:
     	Register a consul service for connect stats
   -token string
     	Consul ACL token./haproxy-consul-connect --help
-Usage of ./haproxy-consul-connect:
-  -dataplane string
-    	Dataplane binary path (default "dataplane-api")
-  -enable-intentions
-    	Enable Connect intentions
-  -haproxy string
-    	Haproxy binary path (default "haproxy")
-  -haproxy-cfg-base-path string
-    	Haproxy binary path (default "/tmp")
-  -http-addr string
-    	Consul agent address (default "127.0.0.1:8500")
-  -log-level string
-    	Log level (default "INFO")
-  -sidecar-for string
-    	The consul service id to proxy
-  -sidecar-for-tag string
-    	The consul service id to proxy
-  -stats-addr string
-    	Listen addr for stats server
-  -stats-service-register
-    	Register a consul service for connect stats
-  -token string
-    	Consul ACL token
 ```
