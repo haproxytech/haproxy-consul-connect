@@ -7,12 +7,17 @@ import (
 
 	"net/http"
 
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/hashicorp/consul/api"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSetup(t *testing.T) {
+	err := haproxy_cmd.CheckEnvironment(haproxy_cmd.DefaultDataplaneBin, haproxy_cmd.DefaultHAProxyBin)
+	if err != nil {
+		t.Skipf("CANNOT Run test because of missing requirement: %s", err.Error())
+	}
 	sd := lib.NewShutdown()
 	client := startAgent(t, sd)
 	defer func() {
