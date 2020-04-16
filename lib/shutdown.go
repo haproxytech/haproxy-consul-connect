@@ -10,12 +10,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Shutdown builds a shutdown that might be used to monitor process
+// and catch signals for proper terminaison
 type Shutdown struct {
 	sync.WaitGroup
 	Stop    chan struct{}
 	stopped uint32
 }
 
+// NewShutdown build a new Shutdown struct
 func NewShutdown() *Shutdown {
 	sd := &Shutdown{
 		Stop: make(chan struct{}),
@@ -39,6 +42,7 @@ func NewShutdown() *Shutdown {
 	return sd
 }
 
+// Shutdown Ask all processes to shutdown
 func (h *Shutdown) Shutdown(reason string) {
 	if atomic.SwapUint32(&h.stopped, 1) > 0 {
 		return
