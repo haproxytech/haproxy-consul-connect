@@ -36,10 +36,10 @@ type HAProxy struct {
 
 func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProxy {
 	if opts.HAProxyBin == "" {
-		opts.HAProxyBin = "haproxy"
+		opts.HAProxyBin = haproxy_cmd.DefaultHAProxyBin
 	}
 	if opts.DataplaneBin == "" {
-		opts.DataplaneBin = "dataplaneapi"
+		opts.DataplaneBin = haproxy_cmd.DefaultDataplaneBin
 	}
 	return &HAProxy{
 		opts:         opts,
