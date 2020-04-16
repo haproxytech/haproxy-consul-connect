@@ -113,10 +113,6 @@ func execAndCapture(path string, re *regexp.Regexp) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed executing %s: %s", path, err.Error())
 	}
-	err = cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("Failed executing %s: %s", path, err)
-	}
 	return string(re.Find([]byte(out))), nil
 }
 
