@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_Shutdown(t *testing.T) {
@@ -17,7 +17,7 @@ func Test_Shutdown(t *testing.T) {
 		sd.Done()
 	}()
 	sd.Wait()
-	assert.GreaterOrEqual(t, time.Since(start).Milliseconds(), expectedDuration.Milliseconds())
+	require.GreaterOrEqual(t, time.Since(start).Milliseconds(), expectedDuration.Milliseconds())
 
 	// Shutting down
 	start = time.Now()
@@ -26,6 +26,6 @@ func Test_Shutdown(t *testing.T) {
 		sd.Shutdown("Kill waiting tasks")
 	}()
 	<-sd.Stop
-	assert.GreaterOrEqual(t, time.Since(start).Milliseconds(), expectedDuration.Milliseconds())
+	require.GreaterOrEqual(t, time.Since(start).Milliseconds(), expectedDuration.Milliseconds())
 
 }
