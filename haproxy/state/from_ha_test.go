@@ -1,8 +1,10 @@
 package state
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
@@ -124,7 +126,18 @@ RHmDi0qnL6qrKfjTOnfHgQPCgxAy9knMIiDzBRg=
 
 	current, err := FromHAProxy(dp)
 	require.NoError(t, err)
+	require.Equal(t, len(state.Backends), len(current.Backends))
+	require.Equal(t, len(state.Frontends), len(current.Frontends))
 
+	// Sort to be sure order is predictible
+	sort.Sort(Frontends(state.Frontends))
+	sort.Sort(Frontends(current.Frontends))
+	// Sort to be sure order is predictible
+	sort.Sort(Backends(state.Backends))
+	sort.Sort(Backends(current.Backends))
+
+	require.Equal(t, state.Backends, current.Backends)
+	require.Equal(t, state.Frontends, current.Frontends)
 	require.Equal(t, state, current)
 }
 
@@ -133,7 +146,7 @@ func TestFromHA(t *testing.T) {
 	if err != nil {
 		t.Skipf("CANNOT Run test because of missing requirement: %s", err.Error())
 	}
-	cfgDir, err := ioutil.TempDir("/tmp", t.Name())
+	cfgDir, err := ioutil.TempDir("", fmt.Sprintf("%s_*", t.Name()))
 	require.NoError(t, err)
 
 	state := GetTestHAConfig(cfgDir)
