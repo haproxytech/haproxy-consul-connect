@@ -42,3 +42,17 @@ func (s State) findBackend(name string) (Backend, bool) {
 
 	return Backend{}, false
 }
+
+// Backends implements methods to sort, will sort by Name
+type Backends []Backend
+
+func (a Backends) Len() int           { return len(a) }
+func (a Backends) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a Backends) Less(i, j int) bool { return a[i].Backend.Name < a[j].Backend.Name }
+
+// Frontends implement methods to sort, will sort by Name
+type Frontends []Frontend
+
+func (a Frontends) Len() int           { return len(a) }
+func (a Frontends) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a Frontends) Less(i, j int) bool { return a[i].Frontend.Name < a[j].Frontend.Name }
