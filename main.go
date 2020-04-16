@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	haproxy "github.com/haproxytech/haproxy-consul-connect/haproxy"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 
 	"github.com/hashicorp/consul/api"
@@ -47,24 +48,39 @@ func (consulLogger) Errorf(format string, args ...interface{}) {
 	log.Errorf(format, args...)
 }
 
+// validateRequirements Checks that dependencies are present
+func validateRequirements(dataplaneBin, haproxyBin string) error {
+	err := haproxy_cmd.CheckEnvironment(dataplaneBin, haproxyBin)
+	if err != nil {
+		msg := fmt.Sprintf("Some external dependencies are missing: %s", err.Error())
+		os.Stderr.WriteString(fmt.Sprintf("%s\n", msg))
+		return err
+	}
+	return nil
+}
+
 func main() {
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
 	service := flag.String("sidecar-for", "", "The consul service id to proxy")
 	serviceTag := flag.String("sidecar-for-tag", "", "The consul service id to proxy")
-	haproxyBin := flag.String("haproxy", "haproxy", "Haproxy binary path")
-	dataplaneBin := flag.String("dataplane", "dataplane-api", "Dataplane binary path")
+	haproxyBin := flag.String("haproxy", haproxy_cmd.DefaultHAProxyBin, "Haproxy binary path")
+	dataplaneBin := flag.String("dataplane", haproxy_cmd.DefaultDataplaneBin, "Dataplane binary path")
 	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Haproxy binary path")
 	statsListenAddr := flag.String("stats-addr", "", "Listen addr for stats server")
 	statsServiceRegister := flag.Bool("stats-service-register", false, "Register a consul service for connect stats")
 	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
 	token := flag.String("token", "", "Consul ACL token")
 	flag.Parse()
-
 	if versionFlag != nil && *versionFlag {
 		fmt.Printf("Version: %s ; BuildTime: %s ; GitHash: %s\n", Version, BuildTime, GitHash)
-		os.Exit(0)
+		status := 0
+		if err := validateRequirements(*dataplaneBin, *haproxyBin); err != nil {
+			fmt.Printf("ERROR: dataplane API / HAProxy dependencies are not satisfied: %s\n", err)
+			status = 4
+		}
+		os.Exit(status)
 	}
 
 	ll, err := log.ParseLevel(*logLevel)

@@ -142,6 +142,10 @@ RHmDi0qnL6qrKfjTOnfHgQPCgxAy9knMIiDzBRg=
 }
 
 func TestFromHA(t *testing.T) {
+	err := haproxy_cmd.CheckEnvironment(haproxy_cmd.DefaultDataplaneBin, haproxy_cmd.DefaultHAProxyBin)
+	if err != nil {
+		t.Skipf("CANNOT Run test because of missing requirement: %s", err.Error())
+	}
 	cfgDir, err := ioutil.TempDir("", fmt.Sprintf("%s_*", t.Name()))
 	require.NoError(t, err)
 

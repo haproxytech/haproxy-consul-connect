@@ -5,10 +5,21 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
+)
+
+const (
+	// DefaultDataplaneBin is the default dataplaneapi program name
+	DefaultDataplaneBin = "dataplaneapi"
+	// DefaultHAProxyBin is the default HAProxy program name
+	DefaultHAProxyBin = "haproxy"
 )
 
 type Config struct {
@@ -92,4 +103,50 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 	}
 
 	return dataplaneClient, nil
+}
+
+// execAndCapture Launch Help from program path and Find Version
+// to capture the output and retrieve version information
+func execAndCapture(path string, re *regexp.Regexp) (string, error) {
+	cmd := exec.Command(path, "-v")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("Failed executing %s: %s", path, err.Error())
+	}
+	err = cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("Failed executing %s: %s", path, err)
+	}
+	return string(re.Find([]byte(out))), nil
+}
+
+// CheckEnvironment Verifies that all dependencies are correct
+func CheckEnvironment(dataplaneapiBin, haproxyBin string) error {
+	errors := make([]error, 2)
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+	ensureVersion := func(path, rx, version string, idx int) {
+		r := regexp.MustCompile(rx)
+		v, e := execAndCapture(path, r)
+		if e != nil {
+			errors[idx] = e
+		} else if strings.Compare(v, "1.2") < 0 {
+			errors[idx] = fmt.Errorf("%s version must be > 1.2,, but is: %s", path, v)
+		}
+		wg.Done()
+	}
+	func() {
+		ensureVersion(haproxyBin, "^HA-Proxy version ([0-9]\\.[0-9]\\.[0-9])", "2.0", 0)
+	}()
+	func() {
+		ensureVersion(dataplaneapiBin, "^HAProxy Data Plane API v([0-9]\\.[0-9]\\.[0-9])", "1.2", 0)
+	}()
+
+	wg.Wait()
+	for _, err := range errors {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
