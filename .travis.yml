@@ -2,13 +2,14 @@ language: go
 go:
 - 1.x
 sudo: false
-before_script:
-  - sudo wget https://github.com/haproxytech/dataplaneapi/releases/download/v1.2.5/dataplaneapi -O /usr/local/bin/dataplaneapi
-  - sudo chmod +x /usr/local/bin/dataplaneapi
 install:
   - wget http://www.haproxy.org/download/2.0/src/haproxy-2.0.14.tar.gz
   - tar -zxvf haproxy-2.0.14.tar.gz
   - pushd haproxy-2.0.14 && make TARGET=linux-glibc USE_OPENSSL=1 USE_ZLIB=1 USE_PCRE=1 && sudo make install && popd
+before_script:
+  - sudo wget https://github.com/haproxytech/dataplaneapi/releases/download/v1.2.5/dataplaneapi -O /usr/local/bin/dataplaneapi
+  - sudo chmod +x /usr/local/bin/dataplaneapi
+  - haproxy -vv
 addons:
   apt:
     update: true
