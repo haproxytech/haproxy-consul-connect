@@ -10,6 +10,7 @@ before_script:
   - sudo wget https://github.com/haproxytech/dataplaneapi/releases/download/v1.2.5/dataplaneapi -O /usr/local/bin/dataplaneapi
   - sudo chmod +x /usr/local/bin/dataplaneapi
   - haproxy -vv
+script: make travis
 addons:
   apt:
     update: true
