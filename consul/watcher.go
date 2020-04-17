@@ -111,11 +111,11 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	w.downstream.LocalBindAddress = defaultDownstreamBindAddr
 	w.downstream.LocalBindPort = srv.Port
 	w.downstream.TargetAddress = defaultUpstreamBindAddr
-	if srv.Connect != nil && srv.Connect.Proxy != nil && srv.Connect.Proxy.Config != nil {
-		if b, ok := srv.Connect.Proxy.Config["bind_address"].(string); ok {
+	if srv.Connect != nil && srv.Connect.SidecarService != nil && srv.Connect.SidecarService.Proxy != nil && srv.Connect.SidecarService.Proxy.Config != nil {
+		if b, ok := srv.Connect.SidecarService.Proxy.Config["bind_address"].(string); ok {
 			w.downstream.LocalBindAddress = b
 		}
-		if a, ok := srv.Connect.Proxy.Config["local_service_address"].(string); ok {
+		if a, ok := srv.Connect.SidecarService.Proxy.Config["local_service_address"].(string); ok {
 			w.downstream.TargetAddress = a
 		}
 	}
