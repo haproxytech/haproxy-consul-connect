@@ -165,7 +165,9 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 	}
 
 	if up.Config["protocol"] != nil {
-		u.Protocol = up.Config["protocol"].(string)
+		if p, ok := up.Config["protocol"].(string); ok {
+			u.Protocol = p
+		}
 	}
 
 	w.lock.Lock()
