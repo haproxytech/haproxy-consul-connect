@@ -33,6 +33,7 @@ type downstream struct {
 	Protocol         string
 	TargetAddress    string
 	TargetPort       int
+	EnableForwardFor bool
 }
 
 type certLeaf struct {
@@ -118,14 +119,14 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 		if c, ok := srv.Proxy.Config["protocol"].(string); ok {
 			w.downstream.Protocol = c
 		}
-	}
-
-	if srv.Connect != nil && srv.Connect.SidecarService != nil && srv.Connect.SidecarService.Proxy != nil && srv.Connect.SidecarService.Proxy.Config != nil {
-		if b, ok := srv.Connect.SidecarService.Proxy.Config["bind_address"].(string); ok {
+		if b, ok := srv.Proxy.Config["bind_address"].(string); ok {
 			w.downstream.LocalBindAddress = b
 		}
-		if a, ok := srv.Connect.SidecarService.Proxy.Config["local_service_address"].(string); ok {
+		if a, ok := srv.Proxy.Config["local_service_address"].(string); ok {
 			w.downstream.TargetAddress = a
+		}
+		if f, ok := srv.Proxy.Config["enable_forwardfor"].(bool); ok {
+			w.downstream.EnableForwardFor = f
 		}
 	}
 
@@ -348,6 +349,8 @@ func (w *Watcher) genCfg() Config {
 			TargetAddress:    w.downstream.TargetAddress,
 			TargetPort:       w.downstream.TargetPort,
 			Protocol:         w.downstream.Protocol,
+			EnableForwardFor: w.downstream.EnableForwardFor,
+
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,

@@ -74,6 +74,13 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 
 	state.Frontends = append(state.Frontends, fe)
 
+	var forwardFor *models.Forwardfor
+	if cfg.EnableForwardFor && beMode == models.BackendModeHTTP {
+		forwardFor = &models.Forwardfor{
+			Enabled: stringp(models.ForwardforEnabledEnabled),
+		}
+	}
+
 	// Backend
 	be := Backend{
 		Backend: models.Backend{
@@ -81,6 +88,7 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 			ServerTimeout:  &serverTimeout,
 			ConnectTimeout: &connectTimeout,
 			Mode:           beMode,
+			Forwardfor:     forwardFor,
 		},
 		Servers: []models.Server{
 			models.Server{
