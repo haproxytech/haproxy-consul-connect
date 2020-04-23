@@ -51,6 +51,7 @@ type Downstream struct {
 	Protocol         string
 	TargetAddress    string
 	TargetPort       int
+	EnableForwardFor bool
 
 	TLS
 }

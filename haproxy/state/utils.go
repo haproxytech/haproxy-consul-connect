@@ -23,3 +23,7 @@ func int64p(i int) *int64 {
 	s := int64(i)
 	return &s
 }
+
+func stringp(s string) *string {
+	return &s
+}
