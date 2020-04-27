@@ -70,6 +70,7 @@ func startConnectService(t *testing.T, sd *lib.Shutdown, client *api.Client, reg
 			errs <- err
 		}
 	}()
+	watcher.Stop()
 
 	sourceHap := haproxy.New(client, watcher.C, haproxy.Options{
 		EnableIntentions: true,
