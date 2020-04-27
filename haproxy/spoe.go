@@ -50,6 +50,7 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 		}
 
 		authorized := err == nil
+		sourceApp := ""
 
 		if authorized {
 			certURI, err := connect.ParseCertURI(cert.URIs[0])
@@ -71,6 +72,9 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 			log.Debugf("spoe: auth response from %s authorized=%v", certURI.URI().String(), resp.Authorized)
 
 			authorized = resp.Authorized
+			if sis, ok := certURI.(*connect.SpiffeIDService); ok {
+				sourceApp = sis.Service
+			}
 		}
 
 		res := 1
@@ -82,6 +86,11 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 				Name:  "auth",
 				Scope: spoe.VarScopeSession,
 				Value: res,
+			},
+			spoe.ActionSetVar{
+				Name:  "source_app",
+				Scope: spoe.VarScopeSession,
+				Value: sourceApp,
 			},
 		}, nil
 	}

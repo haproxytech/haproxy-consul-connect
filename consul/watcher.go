@@ -28,12 +28,13 @@ type upstream struct {
 }
 
 type downstream struct {
-	LocalBindAddress string
-	LocalBindPort    int
-	Protocol         string
-	TargetAddress    string
-	TargetPort       int
-	EnableForwardFor bool
+	LocalBindAddress  string
+	LocalBindPort     int
+	Protocol          string
+	TargetAddress     string
+	TargetPort        int
+	EnableForwardFor  bool
+	AppNameHeaderName string
 }
 
 type certLeaf struct {
@@ -127,6 +128,9 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 		}
 		if f, ok := srv.Proxy.Config["enable_forwardfor"].(bool); ok {
 			w.downstream.EnableForwardFor = f
+		}
+		if a, ok := srv.Proxy.Config["appname_header"].(string); ok {
+			w.downstream.AppNameHeaderName = a
 		}
 	}
 
@@ -344,12 +348,13 @@ func (w *Watcher) genCfg() Config {
 		ServiceID:   w.service,
 		CAsPool:     w.certCAPool,
 		Downstream: Downstream{
-			LocalBindAddress: w.downstream.LocalBindAddress,
-			LocalBindPort:    w.downstream.LocalBindPort,
-			TargetAddress:    w.downstream.TargetAddress,
-			TargetPort:       w.downstream.TargetPort,
-			Protocol:         w.downstream.Protocol,
-			EnableForwardFor: w.downstream.EnableForwardFor,
+			LocalBindAddress:  w.downstream.LocalBindAddress,
+			LocalBindPort:     w.downstream.LocalBindPort,
+			TargetAddress:     w.downstream.TargetAddress,
+			TargetPort:        w.downstream.TargetPort,
+			Protocol:          w.downstream.Protocol,
+			EnableForwardFor:  w.downstream.EnableForwardFor,
+			AppNameHeaderName: w.downstream.AppNameHeaderName,
 
 			TLS: TLS{
 				CAs:  w.certCAs,

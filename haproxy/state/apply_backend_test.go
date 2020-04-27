@@ -27,6 +27,35 @@ func TestAddBackend(t *testing.T) {
 	ha.RequireOps(t, RequireOp(haOpCreateBackend, "back"))
 }
 
+func TestAddBackendHTTPRule(t *testing.T) {
+	old := State{}
+	new := State{
+		Backends: []Backend{
+			Backend{
+				Backend: models.Backend{
+					Name: "back",
+				},
+				HTTPRequestRules: []models.HTTPRequestRule{
+					{
+						HdrName:   "X-App",
+						HdrFormat: "%[var(sess.connect.source_app)]",
+					},
+				},
+			},
+		},
+	}
+
+	ha := &fakeHA{}
+
+	err := Apply(ha, old, new)
+	require.Nil(t, err)
+
+	ha.RequireOps(t,
+		RequireOp(haOpCreateBackend, "back"),
+		RequireOp(haOpCreateHTTPRequestRule, "back"),
+	)
+}
+
 func TestNoChangeBackend(t *testing.T) {
 	old := State{
 		Backends: []Backend{

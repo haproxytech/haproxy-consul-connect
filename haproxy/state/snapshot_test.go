@@ -13,10 +13,11 @@ import (
 func GetTestConsulConfig() consul.Config {
 	return consul.Config{
 		Downstream: consul.Downstream{
-			LocalBindAddress: "127.0.0.2",
-			LocalBindPort:    9999,
-			TargetAddress:    "128.0.0.5",
-			TargetPort:       8888,
+			LocalBindAddress:  "127.0.0.2",
+			LocalBindPort:     9999,
+			TargetAddress:     "128.0.0.5",
+			TargetPort:        8888,
+			AppNameHeaderName: "X-App",
 		},
 		Upstreams: []consul.Upstream{
 			consul.Upstream{
@@ -130,6 +131,14 @@ func GetTestHAConfig(baseCfg string) State {
 					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
+				},
+				HTTPRequestRules: []models.HTTPRequestRule{
+					{
+						ID:        int64p(0),
+						Type:      models.HTTPRequestRuleTypeAddHeader,
+						HdrName:   "X-App",
+						HdrFormat: "%[var(sess.connect.source_app)]",
+					},
 				},
 			},
 

@@ -33,6 +33,7 @@ type HAProxy interface {
 	CreateFilter(parentType, parentName string, filter models.Filter) error
 	CreateTCPRequestRule(parentType, parentName string, rule models.TCPRequestRule) error
 	CreateLogTargets(parentType, parentName string, rule models.LogTarget) error
+	CreateHTTPRequestRule(parentType, parentName string, rule models.HTTPRequestRule) error
 }
 
 func Generate(opts Options, certStore CertificateStore, oldState State, cfg consul.Config) (State, error) {

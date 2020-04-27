@@ -21,6 +21,7 @@ const (
 	haOpCreateFilter
 	haOpCreateTCPRequestRule
 	haOpCreateLogTargets
+	haOpCreateHTTPRequestRule
 )
 
 type fakeHAOp struct {
@@ -132,6 +133,14 @@ func (h *fakeHA) CreateTCPRequestRule(parentType, parentName string, rule models
 func (h *fakeHA) CreateLogTargets(parentType, parentName string, rule models.LogTarget) error {
 	h.ops = append(h.ops, fakeHAOp{
 		Type: haOpCreateLogTargets,
+		Name: parentName,
+	})
+	return nil
+}
+
+func (h *fakeHA) CreateHTTPRequestRule(parentType, parentName string, rule models.HTTPRequestRule) error {
+	h.ops = append(h.ops, fakeHAOp{
+		Type: haOpCreateHTTPRequestRule,
 		Name: parentName,
 	})
 	return nil

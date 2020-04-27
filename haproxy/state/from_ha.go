@@ -12,6 +12,7 @@ type HAProxyRead interface {
 	LogTargets(parentType, parentName string) ([]models.LogTarget, error)
 	Filters(parentType, parentName string) ([]models.Filter, error)
 	TCPRequestRules(parentType, parentName string) ([]models.TCPRequestRule, error)
+	HTTPRequestRules(parentType, parentName string) ([]models.HTTPRequestRule, error)
 	Backends() ([]models.Backend, error)
 	Servers(beName string) ([]models.Server, error)
 }
@@ -100,10 +101,19 @@ func FromHAProxy(ha HAProxyRead) (State, error) {
 			lt = &logTargets[0]
 		}
 
+		reqRules, err := ha.HTTPRequestRules("backend", b.Name)
+		if err != nil {
+			return state, err
+		}
+		if len(reqRules) == 0 {
+			reqRules = nil
+		}
+
 		state.Backends = append(state.Backends, Backend{
-			Backend:   b,
-			Servers:   servers,
-			LogTarget: lt,
+			Backend:          b,
+			Servers:          servers,
+			LogTarget:        lt,
+			HTTPRequestRules: reqRules,
 		})
 	}
 
