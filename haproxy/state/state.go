@@ -19,9 +19,10 @@ type Frontend struct {
 }
 
 type Backend struct {
-	Backend   models.Backend
-	LogTarget *models.LogTarget
-	Servers   []models.Server
+	Backend          models.Backend
+	LogTarget        *models.LogTarget
+	Servers          []models.Server
+	HTTPRequestRules []models.HTTPRequestRule
 }
 
 type State struct {

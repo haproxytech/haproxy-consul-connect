@@ -139,6 +139,10 @@ func applyBackends(ha HAProxy, old, new []Backend) error {
 					return err
 				}
 			}
+
+			for _, r := range newBack.HTTPRequestRules {
+				err = ha.CreateHTTPRequestRule("backend", newBack.Backend.Name, r)
+			}
 		}
 
 		if !needCreate {

@@ -46,12 +46,13 @@ func (n UpstreamNode) Equal(o UpstreamNode) bool {
 }
 
 type Downstream struct {
-	LocalBindAddress string
-	LocalBindPort    int
-	Protocol         string
-	TargetAddress    string
-	TargetPort       int
-	EnableForwardFor bool
+	LocalBindAddress  string
+	LocalBindPort     int
+	Protocol          string
+	TargetAddress     string
+	TargetPort        int
+	EnableForwardFor  bool
+	AppNameHeaderName string
 
 	TLS
 }

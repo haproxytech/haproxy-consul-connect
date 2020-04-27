@@ -109,6 +109,16 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 		}
 	}
 
+	// App name header
+	if cfg.AppNameHeaderName != "" && beMode == models.BackendModeHTTP {
+		be.HTTPRequestRules = append(be.HTTPRequestRules, models.HTTPRequestRule{
+			ID:        int64p(0),
+			Type:      models.HTTPRequestRuleTypeAddHeader,
+			HdrName:   cfg.AppNameHeaderName,
+			HdrFormat: "%[var(sess.connect.source_app)]",
+		})
+	}
+
 	state.Backends = append(state.Backends, be)
 
 	return state, nil
