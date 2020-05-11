@@ -1,6 +1,8 @@
 package haproxy
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"io/ioutil"
 	"os"
 	"path"
@@ -14,8 +16,9 @@ import (
 
 const (
 	dataplaneUser = "haproxy"
-	dataplanePass = "pass"
 )
+
+var dataplanePass string
 
 var baseCfgTmpl = `
 global
@@ -105,6 +108,8 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	}
 	defer cfgFile.Close()
 
+	dataplanePass = createRandomString()
+
 	err = tmpl.Execute(cfgFile, baseParams{
 		NbThread:      runtime.GOMAXPROCS(0),
 		SocketPath:    cfg.StatsSock,
@@ -130,4 +135,10 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	}
 
 	return cfg, nil
+}
+
+func createRandomString() string {
+	randBytes := make([]byte, 32)
+	_, _ = rand.Read(randBytes)
+	return base64.URLEncoding.EncodeToString(randBytes)
 }
