@@ -139,7 +139,7 @@ func startServer(t *testing.T, sd *lib.Shutdown, port int, response string) {
 	sd.Add(1)
 	go func() {
 		http.Serve(lis, http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			rw.Write([]byte("hello connect"))
+			rw.Write([]byte(response))
 		}))
 	}()
 	go func() {

@@ -21,7 +21,7 @@ func GetTestConsulConfig() consul.Config {
 		},
 		Upstreams: []consul.Upstream{
 			consul.Upstream{
-				Service:          "service_1",
+				Name:             "service_1",
 				LocalBindAddress: "127.0.0.1",
 				LocalBindPort:    10000,
 				Nodes: []consul.UpstreamNode{
