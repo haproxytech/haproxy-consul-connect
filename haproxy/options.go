@@ -8,5 +8,6 @@ type Options struct {
 	EnableIntentions     bool
 	StatsListenAddr      string
 	StatsRegisterService bool
-	LogRequests          bool
+	HAProxyLogRequests   bool
+	HAProxyLogAddress    string
 }

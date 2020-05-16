@@ -217,7 +217,7 @@ func GetTestHAConfig(baseCfg string) State {
 var TestOpts = Options{
 	EnableIntentions: true,
 	LogRequests:      true,
-	LogSocket:        "//logs.sock",
+	LogAddress:       "//logs.sock",
 	SPOEConfigPath:   "//spoe",
 }
 

@@ -44,10 +44,10 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 	}
 
 	// Logging
-	if opts.LogRequests && opts.LogSocket != "" {
+	if opts.LogRequests {
 		fe.LogTarget = &models.LogTarget{
 			ID:       int64p(0),
-			Address:  opts.LogSocket,
+			Address:  opts.LogAddress,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,
 		}
@@ -100,10 +100,10 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 	}
 
 	// Logging
-	if opts.LogRequests && opts.LogSocket != "" {
+	if opts.LogRequests {
 		be.LogTarget = &models.LogTarget{
 			ID:       int64p(0),
-			Address:  opts.LogSocket,
+			Address:  opts.LogAddress,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,
 		}

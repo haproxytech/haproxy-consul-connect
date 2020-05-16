@@ -1,14 +1,17 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
+	"github.com/asaskevich/govalidator"
 	log "github.com/sirupsen/logrus"
 
-	haproxy "github.com/haproxytech/haproxy-consul-connect/haproxy"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy"
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 
@@ -40,7 +43,7 @@ func (consulLogger) Infof(format string, args ...interface{}) {
 
 // Warnf Display warning message
 func (consulLogger) Warnf(format string, args ...interface{}) {
-	log.Infof(format, args...)
+	log.Warnf(format, args...)
 }
 
 // Errorf Display error message
@@ -59,15 +62,37 @@ func validateRequirements(dataplaneBin, haproxyBin string) error {
 	return nil
 }
 
+// HAproxy doesn't exit immediately when you pass incorrect log address, so we try to do it on our own to fail fast
+func validateHaproxyLogAddress(logAddress string) error {
+	// allowed values taken from https://cbonte.github.io/haproxy-dconv/2.0/configuration.html#4.2-log
+	fi, err := os.Stat(logAddress)
+	if err != nil {
+		match, err := regexp.Match(`(fd@<[0-9]+>|stdout|stderr)`, []byte(logAddress))
+		if err != nil && match {
+			return nil
+		}
+		if !govalidator.IsHost(logAddress) && !govalidator.IsDialString(logAddress) {
+			return errors.New(fmt.Sprintf("%s should be either syslog host[:port] or a socket", logAddress))
+		}
+	} else {
+		if fi.Mode()&os.ModeSocket == 0 {
+			return errors.New(fmt.Sprintf("%s is a file but not a socket", logAddress))
+		}
+	}
+	return nil
+}
+
 func main() {
 	versionFlag := flag.Bool("version", false, "Show version and exit")
-	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
 	service := flag.String("sidecar-for", "", "The consul service id to proxy")
 	serviceTag := flag.String("sidecar-for-tag", "", "The consul service id to proxy")
 	haproxyBin := flag.String("haproxy", haproxy_cmd.DefaultHAProxyBin, "Haproxy binary path")
 	dataplaneBin := flag.String("dataplane", haproxy_cmd.DefaultDataplaneBin, "Dataplane binary path")
-	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Haproxy binary path")
+	haproxyCfgBasePath := flag.String("haproxy-cfg-base-path", "/tmp", "Generated Haproxy configs path")
+	haproxyLogRequests := flag.Bool("haproxy-log-requests", false, "Enable logging requests by Haproxy")
+	haproxyLogAddress := flag.String("haproxy-log-address", "", "Address for Haproxy logs (default stderr with this app logs)")
+	logLevel := flag.String("log-level", "INFO", "This app log level")
 	statsListenAddr := flag.String("stats-addr", "", "Listen addr for stats server")
 	statsServiceRegister := flag.Bool("stats-service-register", false, "Register a consul service for connect stats")
 	enableIntentions := flag.Bool("enable-intentions", false, "Enable Connect intentions")
@@ -88,6 +113,12 @@ func main() {
 		log.Fatal(err)
 	}
 	log.SetLevel(ll)
+
+	if *haproxyLogAddress != "" {
+		if err := validateHaproxyLogAddress(*haproxyLogAddress); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	sd := lib.NewShutdown()
 
@@ -144,7 +175,8 @@ func main() {
 		EnableIntentions:     *enableIntentions,
 		StatsListenAddr:      *statsListenAddr,
 		StatsRegisterService: *statsServiceRegister,
-		LogRequests:          ll == log.TraceLevel,
+		HAProxyLogRequests:   *haproxyLogRequests,
+		HAProxyLogAddress:    *haproxyLogAddress,
 	})
 	sd.Add(1)
 	go func() {
