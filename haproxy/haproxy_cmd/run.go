@@ -118,31 +118,25 @@ func execAndCapture(path string, re *regexp.Regexp) (string, error) {
 
 // CheckEnvironment Verifies that all dependencies are correct
 func CheckEnvironment(dataplaneapiBin, haproxyBin string) error {
-	errors := make([]error, 2)
+	var err error
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	ensureVersion := func(path, rx, version string, idx int) {
+	ensureVersion := func(path, rx, version string) {
+		defer wg.Done()
 		r := regexp.MustCompile(rx)
 		v, e := execAndCapture(path, r)
 		if e != nil {
-			errors[idx] = e
+			err = e
 		} else if strings.Compare(v, "1.2") < 0 {
-			errors[idx] = fmt.Errorf("%s version must be > 1.2,, but is: %s", path, v)
+			err = fmt.Errorf("%s version must be > 1.2, but is: %s", path, v)
 		}
-		wg.Done()
 	}
-	func() {
-		ensureVersion(haproxyBin, "^HA-Proxy version ([0-9]\\.[0-9]\\.[0-9])", "2.0", 0)
-	}()
-	func() {
-		ensureVersion(dataplaneapiBin, "^HAProxy Data Plane API v([0-9]\\.[0-9]\\.[0-9])", "1.2", 0)
-	}()
+	go ensureVersion(haproxyBin, "^HA-Proxy version ([0-9]\\.[0-9]\\.[0-9])", "2.0")
+	go ensureVersion(dataplaneapiBin, "^HAProxy Data Plane API v([0-9]\\.[0-9]\\.[0-9])", "1.2")
 
 	wg.Wait()
-	for _, err := range errors {
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
 	}
 	return nil
 }
