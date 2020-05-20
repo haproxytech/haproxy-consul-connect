@@ -113,7 +113,7 @@ func execAndCapture(path string, re *regexp.Regexp) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Failed executing %s: %s", path, err.Error())
 	}
-	return string(re.Find([]byte(out))), nil
+	return string(re.Find(out)), nil
 }
 
 // CheckEnvironment Verifies that all dependencies are correct
