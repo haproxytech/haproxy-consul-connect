@@ -105,14 +105,15 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 	return dataplaneClient, nil
 }
 
-// execAndCapture Launch Help from program path and Find Version
+// getVersion Launch Help from program path and Find Version
 // to capture the output and retrieve version information
-func execAndCapture(path string, re *regexp.Regexp) (string, error) {
+func getVersion(path string) (string, error) {
 	cmd := exec.Command(path, "-v")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("Failed executing %s: %s", path, err.Error())
 	}
+	re := regexp.MustCompile("\\d+(\\.\\d+)+")
 	return string(re.Find(out)), nil
 }
 
@@ -121,22 +122,83 @@ func CheckEnvironment(dataplaneapiBin, haproxyBin string) error {
 	var err error
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
-	ensureVersion := func(path, rx, version string) {
+	ensureVersion := func(path, minVer string) {
 		defer wg.Done()
-		r := regexp.MustCompile(rx)
-		v, e := execAndCapture(path, r)
+		currVer, e := getVersion(path)
 		if e != nil {
 			err = e
-		} else if strings.Compare(v, "1.2") < 0 {
-			err = fmt.Errorf("%s version must be > 1.2, but is: %s", path, v)
+		}
+		res, e := compareVersion(currVer, minVer)
+		if e != nil {
+			err = e
+		}
+		if res < 0 {
+			err = fmt.Errorf("%s version must be > %s, but is: %s", path, minVer, currVer)
 		}
 	}
-	go ensureVersion(haproxyBin, "^HA-Proxy version ([0-9]\\.[0-9]\\.[0-9])", "2.0")
-	go ensureVersion(dataplaneapiBin, "^HAProxy Data Plane API v([0-9]\\.[0-9]\\.[0-9])", "1.2")
+	go ensureVersion(haproxyBin, "2.0")
+	go ensureVersion(dataplaneapiBin, "1.2")
 
 	wg.Wait()
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+// compareVersion compares two semver versions.
+// If v1 > v2 returns 1, if v1 < v2 returns -1, if equal returns 0.
+// If major versions are not the same, returns -1.
+// If an error occurs, returns -1 and error.
+func compareVersion(v1, v2 string) (int, error) {
+	a := strings.Split(v1, ".")
+	b := strings.Split(v2, ".")
+
+	if len(a) < 2 {
+		return -1, fmt.Errorf("%s arg is not a version string", v1)
+	}
+	if len(b) < 2 {
+		return -1, fmt.Errorf("%s arg is not a version string", v2)
+	}
+
+	if len(a) != len(b) {
+		switch {
+		case len(a) > len(b):
+			for i := len(b); len(b) < len(a); i++ {
+				b = append(b, " ")
+			}
+			break
+		case len(a) < len(b):
+			for i := len(a); len(a) < len(b); i++ {
+				a = append(a, " ")
+			}
+			break
+		}
+	}
+
+	var res int
+
+	for i, s := range a {
+		var ai, bi int
+		fmt.Sscanf(s, "%d", &ai)
+		fmt.Sscanf(b[i], "%d", &bi)
+
+		if i == 0 {
+			//major versions should be the same
+			if ai != bi {
+				res = -1
+				break
+			}
+			continue
+		}
+		if ai > bi {
+			res = 1
+			break
+		}
+		if ai < bi {
+			res = -1
+			break
+		}
+	}
+	return res, nil
 }
