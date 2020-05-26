@@ -42,39 +42,29 @@ func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
 			return nil, errors.Wrap(err, "spoe handler")
 		}
 
-		_, err = cert.Verify(x509.VerifyOptions{
-			Roots: cfg.CAsPool,
-		})
-		if err != nil {
-			log.Warnf("connect: error validating certificate: %s", err)
-		}
-
-		authorized := err == nil
 		sourceApp := ""
 
-		if authorized {
-			certURI, err := connect.ParseCertURI(cert.URIs[0])
-			if err != nil {
-				log.Printf("connect: invalid leaf certificate URI")
-				return nil, errors.New("connect: invalid leaf certificate URI")
-			}
+		certURI, err := connect.ParseCertURI(cert.URIs[0])
+		if err != nil {
+			log.Printf("connect: invalid leaf certificate URI")
+			return nil, errors.New("connect: invalid leaf certificate URI")
+		}
 
-			// Perform AuthZ
-			resp, err := h.c.Agent().ConnectAuthorize(&api.AgentAuthorizeParams{
-				Target:           cfg.ServiceName,
-				ClientCertURI:    certURI.URI().String(),
-				ClientCertSerial: connect.HexString(cert.SerialNumber.Bytes()),
-			})
-			if err != nil {
-				return nil, errors.Wrap(err, "spoe handler: authz call failed")
-			}
+		// Perform AuthZ
+		resp, err := h.c.Agent().ConnectAuthorize(&api.AgentAuthorizeParams{
+			Target:           cfg.ServiceName,
+			ClientCertURI:    certURI.URI().String(),
+			ClientCertSerial: connect.HexString(cert.SerialNumber.Bytes()),
+		})
+		if err != nil {
+			return nil, errors.Wrap(err, "spoe handler: authz call failed")
+		}
 
-			log.Debugf("spoe: auth response from %s authorized=%v", certURI.URI().String(), resp.Authorized)
+		log.Debugf("spoe: auth response from %s authorized=%v", certURI.URI().String(), resp.Authorized)
 
-			authorized = resp.Authorized
-			if sis, ok := certURI.(*connect.SpiffeIDService); ok {
-				sourceApp = sis.Service
-			}
+		authorized := resp.Authorized
+		if sis, ok := certURI.(*connect.SpiffeIDService); ok {
+			sourceApp = sis.Service
 		}
 
 		res := 1
