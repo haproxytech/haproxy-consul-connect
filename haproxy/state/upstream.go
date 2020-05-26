@@ -8,8 +8,8 @@ import (
 )
 
 func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstream, oldState, newState State) (State, error) {
-	feName := fmt.Sprintf("front_%s", cfg.Service)
-	beName := fmt.Sprintf("back_%s", cfg.Service)
+	feName := fmt.Sprintf("front_%s", cfg.Name)
+	beName := fmt.Sprintf("back_%s", cfg.Name)
 	feMode := models.FrontendModeHTTP
 	beMode := models.BackendModeHTTP
 

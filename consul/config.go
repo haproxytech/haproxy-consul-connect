@@ -15,7 +15,7 @@ type Config struct {
 }
 
 type Upstream struct {
-	Service          string
+	Name             string
 	LocalBindAddress string
 	LocalBindPort    int
 	Protocol         string

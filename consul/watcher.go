@@ -2,6 +2,8 @@ package consul
 
 import (
 	"crypto/x509"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -13,13 +15,14 @@ const (
 	defaultDownstreamBindAddr = "0.0.0.0"
 	defaultUpstreamBindAddr   = "127.0.0.1"
 
-	errorWaitTime = 5 * time.Second
+	errorWaitTime             = 5 * time.Second
+	preparedQueryPollInterval = 30 * time.Second
 )
 
 type upstream struct {
 	LocalBindAddress string
 	LocalBindPort    int
-	Service          string
+	Name             string
 	Datacenter       string
 	Protocol         string
 	Nodes            []*api.ServiceEntry
@@ -138,12 +141,18 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 
 	if srv.Proxy != nil {
 		for _, up := range srv.Proxy.Upstreams {
-			keep[up.DestinationName] = true
+			name := fmt.Sprintf("%s_%s", up.DestinationType, up.DestinationName)
+			keep[name] = true
 			w.lock.Lock()
-			_, ok := w.upstreams[up.DestinationName]
+			_, ok := w.upstreams[name]
 			w.lock.Unlock()
 			if !ok {
-				w.startUpstream(up)
+				switch up.DestinationType {
+				case api.UpstreamDestTypePreparedQuery:
+					w.startUpstreamPreparedQuery(up, name)
+				default:
+					w.startUpstreamService(up, name)
+				}
 			}
 		}
 	}
@@ -159,24 +168,22 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	}
 }
 
-func (w *Watcher) startUpstream(up api.Upstream) {
+func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for service %s", up.DestinationName)
 
 	u := &upstream{
 		LocalBindAddress: up.LocalBindAddress,
 		LocalBindPort:    up.LocalBindPort,
-		Service:          up.DestinationName,
+		Name:             name,
 		Datacenter:       up.Datacenter,
 	}
 
-	if up.Config["protocol"] != nil {
-		if p, ok := up.Config["protocol"].(string); ok {
-			u.Protocol = p
-		}
+	if p, ok := up.Config["protocol"].(string); ok {
+		u.Protocol = p
 	}
 
 	w.lock.Lock()
-	w.upstreams[up.DestinationName] = u
+	w.upstreams[name] = u
 	w.lock.Unlock()
 
 	go func() {
@@ -205,6 +212,75 @@ func (w *Watcher) startUpstream(up api.Upstream) {
 				w.lock.Unlock()
 				w.notifyChanged()
 			}
+		}
+	}()
+}
+
+func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
+	w.log.Infof("consul: watching upstream for prepared_query %s", up.DestinationName)
+
+	u := &upstream{
+		LocalBindAddress: up.LocalBindAddress,
+		LocalBindPort:    up.LocalBindPort,
+		Name:             name,
+		Datacenter:       up.Datacenter,
+	}
+
+	if p, ok := up.Config["protocol"].(string); ok {
+		u.Protocol = p
+	}
+
+	interval := preparedQueryPollInterval
+	if p, ok := up.Config["poll_interval"].(string); ok {
+		dur, err := time.ParseDuration(p)
+		if err != nil {
+			w.log.Errorf(
+				"consul: upstream %s %s: invalid poll interval %s: %s",
+				up.DestinationType,
+				up.DestinationName,
+				p,
+				err,
+			)
+			return
+		}
+		interval = dur
+	}
+
+	w.lock.Lock()
+	w.upstreams[name] = u
+	w.lock.Unlock()
+
+	go func() {
+		var last []*api.ServiceEntry
+		for {
+			if u.done {
+				return
+			}
+			nodes, _, err := w.consul.PreparedQuery().Execute(up.DestinationName, &api.QueryOptions{
+				Connect:    true,
+				Datacenter: up.Datacenter,
+				WaitTime:   10 * time.Minute,
+			})
+			if err != nil {
+				w.log.Errorf("consul: error fetching service definition for service %s: %s", up.DestinationName, err)
+				time.Sleep(errorWaitTime)
+				continue
+			}
+
+			nodesP := []*api.ServiceEntry{}
+			for i := range nodes.Nodes {
+				nodesP = append(nodesP, &nodes.Nodes[i])
+			}
+
+			if !reflect.DeepEqual(last, nodesP) {
+				w.lock.Lock()
+				u.Nodes = nodesP
+				w.lock.Unlock()
+				w.notifyChanged()
+				last = nodesP
+			}
+
+			time.Sleep(interval)
 		}
 	}()
 }
@@ -366,7 +442,7 @@ func (w *Watcher) genCfg() Config {
 
 	for _, up := range w.upstreams {
 		upstream := Upstream{
-			Service:          up.Service,
+			Name:             up.Name,
 			LocalBindAddress: up.LocalBindAddress,
 			LocalBindPort:    up.LocalBindPort,
 			Protocol:         up.Protocol,
