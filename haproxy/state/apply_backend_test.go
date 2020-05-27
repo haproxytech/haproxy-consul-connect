@@ -276,6 +276,58 @@ func TestRemoveServerSameSize(t *testing.T) {
 	)
 }
 
+func TestDifferentCerts(t *testing.T) {
+	old := State{
+		Backends: []Backend{
+			Backend{
+				Backend: models.Backend{
+					Name: "back",
+				},
+				Servers: []models.Server{
+					models.Server{
+						Name:           "srv_0",
+						Address:        "1.2.3.4",
+						Port:           int64p(8080),
+						Maintenance:    models.ServerMaintenanceDisabled,
+						SslCafile:      "test",
+						SslCertificate: "test1",
+					},
+				},
+			},
+		},
+	}
+	new := State{
+		Backends: []Backend{
+			Backend{
+				Backend: models.Backend{
+					Name: "back",
+				},
+				Servers: []models.Server{
+					models.Server{
+						Name:           "srv_0",
+						Address:        "1.2.3.4",
+						Port:           int64p(8080),
+						Maintenance:    models.ServerMaintenanceDisabled,
+						SslCafile:      "test",
+						SslCertificate: "test2",
+					},
+				},
+			},
+		},
+	}
+
+	ha := &fakeHA{}
+
+	err := Apply(ha, old, new)
+	require.Nil(t, err)
+
+	ha.RequireOps(t,
+		RequireOp(haOpDeleteBackend, "back"),
+		RequireOp(haOpCreateBackend, "back"),
+		RequireOp(haOpCreateServer, "srv_0"),
+	)
+}
+
 func TestBackendChange(t *testing.T) {
 	old := State{
 		Backends: []Backend{

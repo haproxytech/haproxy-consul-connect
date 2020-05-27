@@ -170,9 +170,22 @@ func applyBackends(ha HAProxy, old, new []Backend) error {
 }
 
 func shouldRecreateBackend(old, new Backend) bool {
-	return !reflect.DeepEqual(old.Backend, new.Backend) ||
+	if !reflect.DeepEqual(old.Backend, new.Backend) ||
 		!reflect.DeepEqual(old.LogTarget, new.LogTarget) ||
-		len(old.Servers) != len(new.Servers)
+		len(old.Servers) != len(new.Servers) {
+		return true
+	}
+
+	for i := range old.Servers {
+		if old.Servers[i].SslCafile != new.Servers[i].SslCafile {
+			return true
+		}
+		if old.Servers[i].SslCertificate != new.Servers[i].SslCertificate {
+			return true
+		}
+	}
+
+	return false
 }
 
 func shouldUpdateServer(old, new models.Server) bool {
