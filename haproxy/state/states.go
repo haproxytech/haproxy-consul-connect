@@ -28,7 +28,7 @@ type HAProxy interface {
 	DeleteBackend(name string) error
 	CreateBackend(be models.Backend) error
 	CreateServer(beName string, srv models.Server) error
-	ReplaceServer(beName string, srv models.Server) error
+	ReplaceServer(beName string, oldSrvName string, newSrv models.Server) error
 	DeleteServer(beName string, name string) error
 	CreateFilter(parentType, parentName string, filter models.Filter) error
 	CreateTCPRequestRule(parentType, parentName string, rule models.TCPRequestRule) error

@@ -32,13 +32,14 @@ func (n Upstream) Equal(o Upstream) bool {
 }
 
 type UpstreamNode struct {
-	Host   string
-	Port   int
-	Weight int
+	Name    string
+	Address string
+	Port    int
+	Weight  int
 }
 
 func (n UpstreamNode) ID() string {
-	return fmt.Sprintf("%s:%d", n.Host, n.Port)
+	return fmt.Sprintf("%s:%d", n.Address, n.Port)
 }
 
 func (n UpstreamNode) Equal(o UpstreamNode) bool {

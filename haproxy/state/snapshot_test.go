@@ -26,14 +26,16 @@ func GetTestConsulConfig() consul.Config {
 				LocalBindPort:    10000,
 				Nodes: []consul.UpstreamNode{
 					consul.UpstreamNode{
-						Host:   "1.2.3.4",
-						Port:   8080,
-						Weight: 5,
+						Name:    "some-server",
+						Address: "1.2.3.4",
+						Port:    8080,
+						Weight:  5,
 					},
 					consul.UpstreamNode{
-						Host:   "1.2.3.5",
-						Port:   8081,
-						Weight: 8,
+						Name:    "different-server",
+						Address: "1.2.3.5",
+						Port:    8081,
+						Weight:  8,
 					},
 				},
 			},
@@ -155,7 +157,7 @@ func GetTestHAConfig(baseCfg string) State {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:           "srv_0",
+						Name:           "some-server",
 						Address:        "1.2.3.4",
 						Port:           int64p(8080),
 						Weight:         int64p(5),
@@ -166,7 +168,7 @@ func GetTestHAConfig(baseCfg string) State {
 						Maintenance:    models.ServerMaintenanceDisabled,
 					},
 					models.Server{
-						Name:           "srv_1",
+						Name:           "different-server",
 						Address:        "1.2.3.5",
 						Port:           int64p(8081),
 						Weight:         int64p(8),
@@ -234,36 +236,40 @@ func TestServerUpdate(t *testing.T) {
 	consulCfg := GetTestConsulConfig()
 	consulCfg.Upstreams[0].Nodes = consulCfg.Upstreams[0].Nodes[1:]
 
-	oldState := GetTestHAConfig("/")
-
 	// remove first server
-	expectedNewState := GetTestHAConfig("/")
-	expectedNewState.Backends[1].Servers[0].Maintenance = models.ServerMaintenanceEnabled
-	expectedNewState.Backends[1].Servers[0].Address = "127.0.0.1"
-	expectedNewState.Backends[1].Servers[0].Port = int64p(1)
-	expectedNewState.Backends[1].Servers[0].Weight = int64p(1)
+	expectedRemovedFirstServer := GetTestHAConfig("/")
+	expectedRemovedFirstServer.Backends[1].Servers[0].Maintenance = models.ServerMaintenanceEnabled
+	expectedRemovedFirstServer.Backends[1].Servers[0].Name = "disabled_server_0"
+	expectedRemovedFirstServer.Backends[1].Servers[0].Address = "127.0.0.1"
+	expectedRemovedFirstServer.Backends[1].Servers[0].Port = int64p(1)
+	expectedRemovedFirstServer.Backends[1].Servers[0].Weight = int64p(1)
 
-	generated, err := Generate(TestOpts, TestCertStore, oldState, consulCfg)
+	originalState := GetTestHAConfig("/")
+	actualRemovedFirstServer, err := Generate(TestOpts, TestCertStore, originalState, consulCfg)
+
 	require.Nil(t, err)
-	require.Equal(t, expectedNewState, generated)
+	require.Equal(t, expectedRemovedFirstServer, actualRemovedFirstServer)
 
 	// re-add first server
-	generated, err = Generate(TestOpts, TestCertStore, generated, GetTestConsulConfig())
-	require.Nil(t, err)
-	require.Equal(t, GetTestHAConfig("/"), generated)
+	originalConsulCfg := GetTestConsulConfig()
+	readdedFirstServer, err2 := Generate(TestOpts, TestCertStore, actualRemovedFirstServer, originalConsulCfg)
+
+	require.Nil(t, err2)
+	require.Equal(t, originalState, readdedFirstServer)
 
 	// add another one
-	consulCfg = GetTestConsulConfig()
-	consulCfg.Upstreams[0].Nodes = append(consulCfg.Upstreams[0].Nodes, consul.UpstreamNode{
-		Host:   "1.2.3.6",
-		Port:   8082,
-		Weight: 10,
+	addedOneServerConsulCfg := GetTestConsulConfig()
+	addedOneServerConsulCfg.Upstreams[0].Nodes = append(addedOneServerConsulCfg.Upstreams[0].Nodes, consul.UpstreamNode{
+		Name:    "even-different-server",
+		Address: "1.2.3.6",
+		Port:    8082,
+		Weight:  10,
 	})
 
-	expectedNewState = GetTestHAConfig("/")
-	expectedNewState.Backends[1].Servers = append(expectedNewState.Backends[1].Servers,
+	expectedAddedOneServer := GetTestHAConfig("/")
+	expectedAddedOneServer.Backends[1].Servers = append(expectedAddedOneServer.Backends[1].Servers,
 		models.Server{
-			Name:           "srv_2",
+			Name:           "even-different-server",
 			Address:        "1.2.3.6",
 			Port:           int64p(8082),
 			Weight:         int64p(10),
@@ -273,8 +279,8 @@ func TestServerUpdate(t *testing.T) {
 			Verify:         models.BindVerifyRequired,
 			Maintenance:    models.ServerMaintenanceDisabled,
 		},
-		models.Server{
-			Name:           "srv_3",
+		models.Server{ // because we always make slot for one more
+			Name:           "disabled_server_3",
 			Address:        "127.0.0.1",
 			Port:           int64p(1),
 			Weight:         int64p(1),
@@ -286,9 +292,9 @@ func TestServerUpdate(t *testing.T) {
 		},
 	)
 
-	generated, err = Generate(TestOpts, TestCertStore, generated, consulCfg)
+	actualAddedOneServer, err := Generate(TestOpts, TestCertStore, expectedAddedOneServer, addedOneServerConsulCfg)
 	require.Nil(t, err)
-	require.Equal(t, expectedNewState, generated)
+	require.Equal(t, expectedAddedOneServer, actualAddedOneServer)
 }
 
 type fakeCertStore struct{}

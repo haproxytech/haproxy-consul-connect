@@ -85,7 +85,7 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 		return fmt.Sprintf("%s:%d", s.Address, *s.Port)
 	}
 	idxConsulNode := func(s consul.UpstreamNode) string {
-		return fmt.Sprintf("%s:%d", s.Host, s.Port)
+		return fmt.Sprintf("%s:%d", s.Address, s.Port)
 	}
 
 	servers := make([]models.Server, len(oldBackend.Servers))
@@ -124,7 +124,7 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 		}
 
 		servers[i] = disabledServer
-		servers[i].Name = fmt.Sprintf("srv_%d", i)
+		servers[i].Name = fmt.Sprintf("disabled_server_%d", i)
 		emptyServerSlots = append(emptyServerSlots, i)
 	}
 
@@ -143,7 +143,7 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 			}
 			for i := 0; i < add; i++ {
 				server := disabledServer
-				server.Name = fmt.Sprintf("srv_%d", i+l)
+				server.Name = fmt.Sprintf("disabled_server_%d", i+l)
 				servers = append(servers, server)
 				emptyServerSlots = append(emptyServerSlots, i+l)
 			}
@@ -152,7 +152,8 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 		i := emptyServerSlots[0]
 		emptyServerSlots = emptyServerSlots[1:]
 
-		servers[i].Address = s.Host
+		servers[i].Name = s.Name
+		servers[i].Address = s.Address
 		servers[i].Port = int64p(s.Port)
 		servers[i].Weight = int64p(s.Weight)
 		servers[i].Maintenance = models.ServerMaintenanceDisabled

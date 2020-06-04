@@ -98,10 +98,10 @@ func (h *fakeHA) CreateServer(beName string, srv models.Server) error {
 	return nil
 }
 
-func (h *fakeHA) ReplaceServer(beName string, srv models.Server) error {
+func (h *fakeHA) ReplaceServer(beName string, oldSrvName string, newSrv models.Server) error {
 	h.ops = append(h.ops, fakeHAOp{
 		Type: haOpReplaceServer,
-		Name: srv.Name,
+		Name: oldSrvName,
 	})
 	return nil
 }

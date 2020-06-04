@@ -151,7 +151,7 @@ func applyBackends(ha HAProxy, old, new []Backend) error {
 					continue
 				}
 
-				err := ha.ReplaceServer(newBack.Backend.Name, s)
+				err := ha.ReplaceServer(newBack.Backend.Name, oldServers[i].Name, s)
 				if err != nil {
 					return err
 				}

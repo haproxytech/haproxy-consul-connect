@@ -58,15 +58,15 @@ func (t *tnx) CreateServer(beName string, srv models.Server) error {
 	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/servers?backend=%s&transaction_id=%s", beName, t.txID), srv, nil)
 }
 
-func (t *tnx) ReplaceServer(beName string, srv models.Server) error {
+func (t *tnx) ReplaceServer(beName string, oldSrvName string, newSrv models.Server) error {
 	t.After(func() error {
-		return t.client.ReplaceServer(beName, srv)
+		return t.client.ReplaceServer(beName, oldSrvName, newSrv)
 	})
 	return nil
 }
 
-func (c *Dataplane) ReplaceServer(beName string, srv models.Server) error {
-	err := c.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&version=%d", srv.Name, beName, c.version), srv, nil)
+func (c *Dataplane) ReplaceServer(beName string, oldSrvName string, newSrv models.Server) error {
+	err := c.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&version=%d", oldSrvName, beName, c.version), newSrv, nil)
 	if err != nil {
 		return err
 	}

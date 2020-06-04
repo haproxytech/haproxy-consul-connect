@@ -65,7 +65,7 @@ func TestNoChangeBackend(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -82,7 +82,7 @@ func TestNoChangeBackend(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -138,7 +138,7 @@ func TestAddServerDifferentSize(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -156,7 +156,7 @@ func TestAddServerDifferentSize(t *testing.T) {
 	ha.RequireOps(t,
 		RequireOp(haOpDeleteBackend, "back"),
 		RequireOp(haOpCreateBackend, "back"),
-		RequireOp(haOpCreateServer, "srv_0"),
+		RequireOp(haOpCreateServer, "some-server"),
 	)
 }
 
@@ -169,13 +169,13 @@ func TestAddServerSameSize(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
 					},
 					models.Server{
-						Name:        "srv_1",
+						Name:        "disabled_server_0",
 						Address:     "127.0.0.1",
 						Port:        int64p(1),
 						Maintenance: models.ServerMaintenanceEnabled,
@@ -192,13 +192,13 @@ func TestAddServerSameSize(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
 					},
 					models.Server{
-						Name:        "srv_1",
+						Name:        "different-server",
 						Address:     "1.2.3.5",
 						Port:        int64p(8081),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -214,7 +214,7 @@ func TestAddServerSameSize(t *testing.T) {
 	require.Nil(t, err)
 
 	ha.RequireOps(t,
-		RequireOp(haOpReplaceServer, "srv_1"),
+		RequireOp(haOpReplaceServer, "disabled_server_0"),
 	)
 }
 
@@ -227,13 +227,13 @@ func TestRemoveServerSameSize(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
 					},
 					models.Server{
-						Name:        "srv_1",
+						Name:        "different-server",
 						Address:     "1.2.3.5",
 						Port:        int64p(8081),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -250,13 +250,13 @@ func TestRemoveServerSameSize(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "disabled_server_0",
 						Address:     "127.0.0.1",
 						Port:        int64p(1),
 						Maintenance: models.ServerMaintenanceEnabled,
 					},
 					models.Server{
-						Name:        "srv_1",
+						Name:        "different-server",
 						Address:     "1.2.3.5",
 						Port:        int64p(8081),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -272,7 +272,7 @@ func TestRemoveServerSameSize(t *testing.T) {
 	require.Nil(t, err)
 
 	ha.RequireOps(t,
-		RequireOp(haOpReplaceServer, "srv_0"),
+		RequireOp(haOpReplaceServer, "some-server"),
 	)
 }
 
@@ -285,7 +285,7 @@ func TestDifferentCerts(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:           "srv_0",
+						Name:           "some-server",
 						Address:        "1.2.3.4",
 						Port:           int64p(8080),
 						Maintenance:    models.ServerMaintenanceDisabled,
@@ -304,7 +304,7 @@ func TestDifferentCerts(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:           "srv_0",
+						Name:           "some-server",
 						Address:        "1.2.3.4",
 						Port:           int64p(8080),
 						Maintenance:    models.ServerMaintenanceDisabled,
@@ -324,7 +324,7 @@ func TestDifferentCerts(t *testing.T) {
 	ha.RequireOps(t,
 		RequireOp(haOpDeleteBackend, "back"),
 		RequireOp(haOpCreateBackend, "back"),
-		RequireOp(haOpCreateServer, "srv_0"),
+		RequireOp(haOpCreateServer, "some-server"),
 	)
 }
 
@@ -337,7 +337,7 @@ func TestBackendChange(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -355,7 +355,7 @@ func TestBackendChange(t *testing.T) {
 				},
 				Servers: []models.Server{
 					models.Server{
-						Name:        "srv_0",
+						Name:        "some-server",
 						Address:     "1.2.3.4",
 						Port:        int64p(8080),
 						Maintenance: models.ServerMaintenanceDisabled,
@@ -373,6 +373,6 @@ func TestBackendChange(t *testing.T) {
 	ha.RequireOps(t,
 		RequireOp(haOpDeleteBackend, "back"),
 		RequireOp(haOpCreateBackend, "back"),
-		RequireOp(haOpCreateServer, "srv_0"),
+		RequireOp(haOpCreateServer, "some-server"),
 	)
 }
