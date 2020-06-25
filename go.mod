@@ -24,4 +24,5 @@ require (
 	github.com/stretchr/testify v1.4.0
 	gopkg.in/d4l3k/messagediff.v1 v1.2.1
 	gopkg.in/mcuadros/go-syslog.v2 v2.2.1
+	zvelo.io/ttlru v1.0.9
 )
