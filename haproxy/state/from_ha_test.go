@@ -149,6 +149,6 @@ func TestFromHA(t *testing.T) {
 	cfgDir, err := ioutil.TempDir("", fmt.Sprintf("%s_*", t.Name()))
 	require.NoError(t, err)
 
-	state := GetTestHAConfig(cfgDir)
+	state := GetTestHAConfig(cfgDir, "")
 	testCfg(t, cfgDir, state)
 }

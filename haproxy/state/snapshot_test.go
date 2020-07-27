@@ -41,7 +41,7 @@ func GetTestConsulConfig() consul.Config {
 	}
 }
 
-func GetTestHAConfig(baseCfg string) State {
+func GetTestHAConfig(baseCfg string, certVersion string) State {
 	s := State{
 		Frontends: []Frontend{
 
@@ -59,8 +59,8 @@ func GetTestHAConfig(baseCfg string) State {
 					Address:        "127.0.0.2",
 					Port:           int64p(9999),
 					Ssl:            true,
-					SslCafile:      baseCfg + "/ca",
-					SslCertificate: baseCfg + "/cert",
+					SslCafile:      baseCfg + "/ca" + certVersion,
+					SslCertificate: baseCfg + "/cert" + certVersion,
 					Verify:         models.BindVerifyRequired,
 				},
 				LogTarget: &models.LogTarget{
@@ -160,8 +160,8 @@ func GetTestHAConfig(baseCfg string) State {
 						Port:           int64p(8080),
 						Weight:         int64p(5),
 						Ssl:            models.ServerSslEnabled,
-						SslCafile:      baseCfg + "/ca",
-						SslCertificate: baseCfg + "/cert",
+						SslCafile:      baseCfg + "/ca" + certVersion,
+						SslCertificate: baseCfg + "/cert" + certVersion,
 						Verify:         models.BindVerifyRequired,
 						Maintenance:    models.ServerMaintenanceDisabled,
 					},
@@ -171,8 +171,8 @@ func GetTestHAConfig(baseCfg string) State {
 						Port:           int64p(8081),
 						Weight:         int64p(8),
 						Ssl:            models.ServerSslEnabled,
-						SslCafile:      baseCfg + "/ca",
-						SslCertificate: baseCfg + "/cert",
+						SslCafile:      baseCfg + "/ca" + certVersion,
+						SslCertificate: baseCfg + "/cert" + certVersion,
 						Verify:         models.BindVerifyRequired,
 						Maintenance:    models.ServerMaintenanceDisabled,
 					},
@@ -227,17 +227,17 @@ func TestSnapshotDownstream(t *testing.T) {
 	generated, err := Generate(TestOpts, TestCertStore, State{}, GetTestConsulConfig())
 	require.Nil(t, err)
 
-	require.Equal(t, GetTestHAConfig("/"), generated)
+	require.Equal(t, GetTestHAConfig("/", ""), generated)
 }
 
 func TestServerUpdate(t *testing.T) {
 	consulCfg := GetTestConsulConfig()
 	consulCfg.Upstreams[0].Nodes = consulCfg.Upstreams[0].Nodes[1:]
 
-	oldState := GetTestHAConfig("/")
+	oldState := GetTestHAConfig("/", "")
 
 	// remove first server
-	expectedNewState := GetTestHAConfig("/")
+	expectedNewState := GetTestHAConfig("/", "")
 	expectedNewState.Backends[1].Servers[0].Maintenance = models.ServerMaintenanceEnabled
 	expectedNewState.Backends[1].Servers[0].Address = "127.0.0.1"
 	expectedNewState.Backends[1].Servers[0].Port = int64p(1)
@@ -250,7 +250,7 @@ func TestServerUpdate(t *testing.T) {
 	// re-add first server
 	generated, err = Generate(TestOpts, TestCertStore, generated, GetTestConsulConfig())
 	require.Nil(t, err)
-	require.Equal(t, GetTestHAConfig("/"), generated)
+	require.Equal(t, GetTestHAConfig("/", ""), generated)
 
 	// add another one
 	consulCfg = GetTestConsulConfig()
@@ -260,7 +260,7 @@ func TestServerUpdate(t *testing.T) {
 		Weight: 10,
 	})
 
-	expectedNewState = GetTestHAConfig("/")
+	expectedNewState = GetTestHAConfig("/", "")
 	expectedNewState.Backends[1].Servers = append(expectedNewState.Backends[1].Servers,
 		models.Server{
 			Name:           "srv_2",
@@ -291,8 +291,22 @@ func TestServerUpdate(t *testing.T) {
 	require.Equal(t, expectedNewState, generated)
 }
 
-type fakeCertStore struct{}
+func TestCertificateUpgrade(t *testing.T) {
+	generated, err := Generate(TestOpts, fakeCertStore{"1"}, State{}, GetTestConsulConfig())
+	require.Nil(t, err)
+
+	generated, err = Generate(TestOpts, fakeCertStore{"2"}, generated, GetTestConsulConfig())
+	require.Nil(t, err)
+
+	haCfg := GetTestHAConfig("/", "2")
+
+	require.Equal(t, haCfg, generated)
+}
+
+type fakeCertStore struct {
+	suffix string
+}
 
 func (s fakeCertStore) CertsPath(t consul.TLS) (string, string, error) {
-	return "//ca", "//cert", nil
+	return "//ca" + s.suffix, "//cert" + s.suffix, nil
 }

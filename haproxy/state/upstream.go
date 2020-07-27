@@ -130,8 +130,11 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 
 	// Add new servers
 	for _, s := range cfg.Nodes {
-		_, ok := serversIdx[idxConsulNode(s)]
+		i, ok := serversIdx[idxConsulNode(s)]
 		if ok {
+			// if the server exists, just update its certificate in case they changed
+			servers[i].SslCafile = caPath
+			servers[i].SslCertificate = crtPath
 			continue
 		}
 
@@ -149,7 +152,7 @@ func generateUpstreamServers(opts Options, certStore CertificateStore, cfg consu
 			}
 		}
 
-		i := emptyServerSlots[0]
+		i = emptyServerSlots[0]
 		emptyServerSlots = emptyServerSlots[1:]
 
 		servers[i].Address = s.Host
