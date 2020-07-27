@@ -29,6 +29,9 @@ global
 	nbproc 1
 	nbthread {{.NbThread}}
 
+defaults
+	http-reuse always
+
 userlist controller
 	user {{.DataplaneUser}} insecure-password {{.DataplanePass}}
 `
