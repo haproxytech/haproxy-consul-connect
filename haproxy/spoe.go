@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
 	"zvelo.io/ttlru"
 
@@ -19,6 +21,18 @@ import (
 const (
 	authzTimeout = time.Second
 	cacheTTL     = time.Second
+)
+
+var (
+	certCacheAccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "cert_cache_access",
+		Help: "The total number certificate cache access by hit/miss",
+	}, []string{"type"})
+
+	authCacheAccess = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "auth_cache_access",
+		Help: "The total number auth cache access by hit/miss",
+	}, []string{"type"})
 )
 
 type cacheEntry struct {
@@ -105,6 +119,7 @@ func (h *SPOEHandler) isAuthorized(target, uri string, serial []byte) (bool, err
 	entry, ok := h.authCache[uri]
 	now := time.Now()
 	if !ok || now.Sub(entry.At) > cacheTTL {
+		authCacheAccess.WithLabelValues("miss").Inc()
 		entry = &cacheEntry{
 			At: now,
 			C:  make(chan struct{}),
@@ -131,6 +146,7 @@ func (h *SPOEHandler) isAuthorized(target, uri string, serial []byte) (bool, err
 			close(entry.C)
 		}()
 	} else {
+		authCacheAccess.WithLabelValues("hit").Inc()
 		h.authCacheLock.Unlock()
 	}
 
@@ -158,9 +174,11 @@ func (h *SPOEHandler) fetchAutz(target, uri string, serial []byte) (bool, error)
 func (h *SPOEHandler) decodeCertificate(b []byte) (*x509.Certificate, error) {
 	certCacheKey := string(b)
 	if v, ok := h.certCache.Get(certCacheKey); ok {
+		certCacheAccess.WithLabelValues("hit").Inc()
 		return v.(*x509.Certificate), nil
 	}
 
+	certCacheAccess.WithLabelValues("miss").Inc()
 	cert, err := x509.ParseCertificate(b)
 	if err != nil {
 		return nil, err
