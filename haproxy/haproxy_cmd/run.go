@@ -25,6 +25,7 @@ const (
 type Config struct {
 	HAProxyPath             string
 	HAProxyConfigPath       string
+	HAProxyLogWithThisApp   bool
 	DataplanePath           string
 	DataplaneTransactionDir string
 	DataplaneSock           string
@@ -35,6 +36,8 @@ type Config struct {
 func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 	haCmd, err := runCommand(sd,
 		cfg.HAProxyPath,
+		"haproxy",
+		cfg.HAProxyLogWithThisApp,
 		"-f",
 		cfg.HAProxyConfigPath,
 	)
@@ -47,6 +50,8 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 
 	cmd, err := runCommand(sd,
 		cfg.DataplanePath,
+		"dataplaneapi",
+		true,
 		"--scheme", "unix",
 		"--socket-path", cfg.DataplaneSock,
 		"--haproxy-bin", cfg.HAProxyPath,

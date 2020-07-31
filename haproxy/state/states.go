@@ -12,7 +12,7 @@ import (
 type Options struct {
 	EnableIntentions bool
 	LogRequests      bool
-	LogSocket        string
+	LogAddress       string
 	SPOEConfigPath   string
 	SPOESocket       string
 }

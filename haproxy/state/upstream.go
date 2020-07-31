@@ -34,10 +34,10 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 			Port:    &fePort64,
 		},
 	}
-	if opts.LogRequests && opts.LogSocket != "" {
+	if opts.LogRequests && opts.LogAddress != "" {
 		fe.LogTarget = &models.LogTarget{
 			ID:       int64p(0),
-			Address:  opts.LogSocket,
+			Address:  opts.LogAddress,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,
 		}
@@ -56,10 +56,10 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 			Mode: beMode,
 		},
 	}
-	if opts.LogRequests && opts.LogSocket != "" {
+	if opts.LogRequests && opts.LogAddress != "" {
 		be.LogTarget = &models.LogTarget{
 			ID:       int64p(0),
-			Address:  opts.LogSocket,
+			Address:  opts.LogAddress,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,
 		}

@@ -13,10 +13,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func runCommand(sd *lib.Shutdown, cmdPath string, args ...string) (*exec.Cmd, error) {
+func runCommand(sd *lib.Shutdown, cmdPath string, logPrefix string, logWithThisApp bool, args ...string) (*exec.Cmd, error) {
 	_, file := path.Split(cmdPath)
 	cmd := exec.Command(cmdPath, args...)
-	halog.Cmd("haproxy", cmd)
+	if logWithThisApp {
+		halog.Cmd(logPrefix, cmd)
+	}
 
 	sd.Add(1)
 	err := cmd.Start()

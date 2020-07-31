@@ -3,7 +3,7 @@ module github.com/haproxytech/haproxy-consul-connect
 go 1.13
 
 require (
-	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 	github.com/criteo/haproxy-spoe-go v0.0.0-20190925130734-97891c13d324
 	github.com/d4l3k/messagediff v1.2.1 // indirect
 	github.com/facebookgo/freeport v0.0.0-20150612182905-d4adf43b75b9

@@ -95,10 +95,15 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 
 			newConsulCfg := nextState.Load().(consul.Config)
 
+			logAddress := h.haConfig.LogsSock
+			if h.opts.HAProxyLogAddress != "" {
+				logAddress = h.opts.HAProxyLogAddress
+			}
+
 			newState, err := state.Generate(state.Options{
 				EnableIntentions: h.opts.EnableIntentions,
-				LogRequests:      h.opts.LogRequests,
-				LogSocket:        h.haConfig.LogsSock,
+				LogRequests:      h.opts.HAProxyLogRequests,
+				LogAddress:       logAddress,
 				SPOEConfigPath:   h.haConfig.SPOE,
 				SPOESocket:       h.haConfig.SPOESock,
 			}, h.haConfig, currentState, newConsulCfg)

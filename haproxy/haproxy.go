@@ -60,11 +60,13 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	}
 	h.haConfig = hc
 
-	if h.opts.LogRequests {
+	if h.opts.HAProxyLogAddress == "" {
 		err := h.startLogger()
 		if err != nil {
 			return err
 		}
+	} else {
+		log.Infof("not starting built-in syslog - using %s as syslog address", h.opts.HAProxyLogAddress)
 	}
 
 	if h.opts.EnableIntentions {
@@ -77,6 +79,7 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 	dpc, err := haproxy_cmd.Start(sd, haproxy_cmd.Config{
 		HAProxyPath:             h.opts.HAProxyBin,
 		HAProxyConfigPath:       hc.HAProxy,
+		HAProxyLogWithThisApp:   h.opts.HAProxyLogAddress == "",
 		DataplanePath:           h.opts.DataplaneBin,
 		DataplaneTransactionDir: hc.DataplaneTransactionDir,
 		DataplaneSock:           hc.DataplaneSock,
@@ -111,6 +114,8 @@ func (h *HAProxy) startLogger() error {
 			log.Infof("%s: %s", logParts["app_name"], logParts["message"])
 		}
 	}(channel)
+
+	log.Infof("starting built-in syslog server at %s", h.haConfig.LogsSock)
 
 	return nil
 }

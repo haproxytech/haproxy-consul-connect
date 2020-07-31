@@ -28,6 +28,7 @@ global
 	tune.ssl.default-dh-param 1024
 	nbproc 1
 	nbthread {{.NbThread}}
+	log-tag haproxy_sidecar
 
 defaults
 	http-reuse always
@@ -60,7 +61,6 @@ type baseParams struct {
 	SocketPath    string
 	DataplaneUser string
 	DataplanePass string
-	LogsPath      string
 }
 
 type haConfig struct {
@@ -116,7 +116,6 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	err = tmpl.Execute(cfgFile, baseParams{
 		NbThread:      runtime.GOMAXPROCS(0),
 		SocketPath:    cfg.StatsSock,
-		LogsPath:      cfg.LogsSock,
 		DataplaneUser: dataplaneUser,
 		DataplanePass: dataplanePass,
 	})
