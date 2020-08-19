@@ -12,7 +12,8 @@ func Test_runCommand_ok(t *testing.T) {
 	sd := lib.NewShutdown()
 	cmd, err := runCommand(sd, "ls", ".")
 	require.NoError(t, err)
-	cmd.Wait()
+	err = cmd.Wait()
+	require.NoError(t, err)
 }
 
 func Test_runCommand_nok_wrong_path(t *testing.T) {

@@ -41,9 +41,6 @@ func Start(sd *lib.Shutdown, cfg Config) (*dataplane.Dataplane, error) {
 	if err != nil {
 		return nil, err
 	}
-	if haCmd.Process == nil {
-		return nil, fmt.Errorf("%s was not started", cfg.HAProxyPath)
-	}
 
 	cmd, err := runCommand(sd,
 		cfg.DataplanePath,

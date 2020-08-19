@@ -109,7 +109,12 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer cfgFile.Close()
+	defer func() {
+		err := cfgFile.Close()
+		if err != nil {
+			log.Errorf("error closing config file %s: %s", cfg.HAProxy, err)
+		}
+	}()
 
 	dataplanePass = createRandomString()
 
@@ -130,7 +135,12 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 		sd.Done()
 		return nil, err
 	}
-	defer spoeCfgFile.Close()
+	defer func() {
+		err := spoeCfgFile.Close()
+		if err != nil {
+			log.Errorf("error closing spoe config file %s: %s", cfg.SPOE, err)
+		}
+	}()
 	_, err = spoeCfgFile.WriteString(spoeConfTmpl)
 	if err != nil {
 		sd.Done()

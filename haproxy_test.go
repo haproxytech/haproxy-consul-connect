@@ -62,7 +62,8 @@ func TestService(t *testing.T) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
-	res.Body.Close()
+	err = res.Body.Close()
+	require.NoError(t, err)
 	require.Equal(t, "hello connect", string(body))
 }
 
@@ -131,6 +132,7 @@ func TestPreparedQuery(t *testing.T) {
 
 	body, err := ioutil.ReadAll(res.Body)
 	require.NoError(t, err)
-	res.Body.Close()
+	err = res.Body.Close()
+	require.NoError(t, err)
 	require.Equal(t, "hello connect prepared query", string(body))
 }
