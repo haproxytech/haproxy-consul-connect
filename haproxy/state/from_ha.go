@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/haproxytech/models"
 )
@@ -77,6 +78,8 @@ func FromHAProxy(ha HAProxyRead) (State, error) {
 		})
 	}
 
+	sort.Sort(Frontends(state.Frontends))
+
 	haBackends, err := ha.Backends()
 	if err != nil {
 		return state, err
@@ -116,6 +119,8 @@ func FromHAProxy(ha HAProxyRead) (State, error) {
 			HTTPRequestRules: reqRules,
 		})
 	}
+
+	sort.Sort(Backends(state.Backends))
 
 	return state, nil
 }

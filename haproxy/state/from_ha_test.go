@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"sort"
 	"testing"
 
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
@@ -128,13 +127,6 @@ RHmDi0qnL6qrKfjTOnfHgQPCgxAy9knMIiDzBRg=
 	require.NoError(t, err)
 	require.Equal(t, len(state.Backends), len(current.Backends))
 	require.Equal(t, len(state.Frontends), len(current.Frontends))
-
-	// Sort to be sure order is predictible
-	sort.Sort(Frontends(state.Frontends))
-	sort.Sort(Frontends(current.Frontends))
-	// Sort to be sure order is predictible
-	sort.Sort(Backends(state.Backends))
-	sort.Sort(Backends(current.Backends))
 
 	require.Equal(t, state.Backends, current.Backends)
 	require.Equal(t, state.Frontends, current.Frontends)

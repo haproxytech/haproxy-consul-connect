@@ -3,7 +3,6 @@ package state
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
@@ -70,13 +69,8 @@ func Generate(opts Options, certStore CertificateStore, oldState State, cfg cons
 		}
 	}
 
-	sort.Slice(newState.Frontends, func(i, j int) bool {
-		return strings.Compare(newState.Frontends[i].Frontend.Name, newState.Frontends[j].Frontend.Name) < 0
-	})
-
-	sort.Slice(newState.Backends, func(i, j int) bool {
-		return strings.Compare(newState.Backends[i].Backend.Name, newState.Backends[j].Backend.Name) < 0
-	})
+	sort.Sort(Frontends(newState.Frontends))
+	sort.Sort(Backends(newState.Backends))
 
 	return newState, nil
 }
