@@ -143,7 +143,12 @@ func (c *Dataplane) makeReq(method, url string, reqData, resData interface{}) er
 	if err != nil {
 		return errors.Wrapf(err, "error calling %s %s", method, url)
 	}
-	defer res.Body.Close()
+	defer func() {
+		err := res.Body.Close()
+		if err != nil {
+			log.Errorf("error calling %s %s: %s", method, url, err)
+		}
+	}()
 
 	if res.StatusCode >= http.StatusBadRequest {
 		body, _ := ioutil.ReadAll(res.Body)

@@ -28,7 +28,12 @@ func (h *haConfig) FilePath(content []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		err := f.Close()
+		if err != nil {
+			log.Errorf("error closing file %s: %s", path, err)
+		}
+	}()
 
 	_, err = f.Write(content)
 	if err != nil {

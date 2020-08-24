@@ -16,10 +16,13 @@ import (
 func runCommand(sd *lib.Shutdown, cmdPath string, args ...string) (*exec.Cmd, error) {
 	_, file := path.Split(cmdPath)
 	cmd := exec.Command(cmdPath, args...)
-	halog.Cmd("haproxy", cmd)
+	err := halog.Cmd("haproxy", cmd)
+	if err != nil {
+		return nil, err
+	}
 
 	sd.Add(1)
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		sd.Done()
 		return nil, errors.Wrapf(err, "error starting %s", file)
@@ -46,7 +49,10 @@ func runCommand(sd *lib.Shutdown, cmdPath string, args ...string) (*exec.Cmd, er
 			return
 		}
 		log.Infof("killing %s with sig %d", file, syscall.SIGTERM)
-		syscall.Kill(cmd.Process.Pid, syscall.SIGTERM)
+		err := syscall.Kill(cmd.Process.Pid, syscall.SIGTERM)
+		if err != nil {
+			log.Errorf("could not kill %s: %s", file, err)
+		}
 	}()
 
 	return cmd, nil

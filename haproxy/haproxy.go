@@ -103,8 +103,14 @@ func (h *HAProxy) startLogger() error {
 	server := syslog.NewServer()
 	server.SetFormat(syslog.RFC5424)
 	server.SetHandler(handler)
-	server.ListenUnixgram(h.haConfig.LogsSock)
-	server.Boot()
+	err := server.ListenUnixgram(h.haConfig.LogsSock)
+	if err != nil {
+		return fmt.Errorf("error starting syslog logger: %s", err)
+	}
+	err = server.Boot()
+	if err != nil {
+		return fmt.Errorf("error starting syslog logger: %s", err)
+	}
 
 	go func(channel syslog.LogPartsChannel) {
 		for logParts := range channel {
@@ -183,7 +189,10 @@ func (h *HAProxy) startStats() error {
 		http.Handle("/metrics", promhttp.Handler())
 
 		log.Infof("Starting stats server at %s", h.opts.StatsListenAddr)
-		http.ListenAndServe(h.opts.StatsListenAddr, nil)
+		err := http.ListenAndServe(h.opts.StatsListenAddr, nil)
+		if err != nil {
+			log.Errorf("error starting stats server: %s", err)
+		}
 	}()
 
 	return nil
