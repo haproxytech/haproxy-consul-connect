@@ -66,12 +66,16 @@ func (t *tnx) ReplaceServer(beName string, srv models.Server) error {
 }
 
 func (c *Dataplane) ReplaceServer(beName string, srv models.Server) error {
-	err := c.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&version=%d", srv.Name, beName, c.version), srv, nil)
+	v, err := c.ConfigVersion()
 	if err != nil {
 		return err
 	}
 
-	c.version++
+	err = c.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/configuration/servers/%s?backend=%s&version=%d", srv.Name, beName, v), srv, nil)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
