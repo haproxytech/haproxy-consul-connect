@@ -19,7 +19,6 @@ type Dataplane struct {
 	userName, password string
 	client             *http.Client
 	lock               sync.Mutex
-	version            int
 }
 
 func New(addr, userName, password string, client *http.Client) *Dataplane {
@@ -28,7 +27,6 @@ func New(addr, userName, password string, client *http.Client) *Dataplane {
 		userName: userName,
 		password: password,
 		client:   client,
-		version:  1,
 	}
 }
 
@@ -49,8 +47,13 @@ func (t *tnx) ensureTnx() error {
 	if t.txID != "" {
 		return nil
 	}
+	v, err := t.client.ConfigVersion()
+	if err != nil {
+		return err
+	}
+
 	res := models.Transaction{}
-	err := t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/transactions?version=%d", t.client.version), nil, &res)
+	err = t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/transactions?version=%d", v), nil, &res)
 	if err != nil {
 		return err
 	}
@@ -69,6 +72,19 @@ func (c *Dataplane) Info() (*models.ProcessInfo, error) {
 	return res, nil
 }
 
+func (c *Dataplane) ConfigVersion() (int, error) {
+	var res struct {
+		Version int `json:"_version"`
+	}
+	err := c.makeReq(http.MethodGet, "/v1/services/haproxy/configuration/frontends", nil, &res)
+	if err != nil {
+		return 0, err
+	}
+	log.Debugf("dataplane version is %d", res.Version)
+
+	return res.Version, nil
+}
+
 func (c *Dataplane) Ping() error {
 	return c.makeReq(http.MethodGet, "/v1/specification", nil, nil)
 }
@@ -84,8 +100,6 @@ func (t *tnx) Commit() error {
 		if err != nil {
 			return err
 		}
-
-		t.client.version++
 	}
 
 	for _, f := range t.after {
