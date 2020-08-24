@@ -3,9 +3,14 @@ package state
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/haproxytech/models"
+)
+
+const (
+	spoeTimeout = 30 * time.Second
 )
 
 type Options struct {
@@ -44,8 +49,8 @@ func Generate(opts Options, certStore CertificateStore, oldState State, cfg cons
 		newState.Backends = append(newState.Backends, Backend{
 			Backend: models.Backend{
 				Name:           "spoe_back",
-				ServerTimeout:  int64p(30000),
-				ConnectTimeout: int64p(30000),
+				ServerTimeout:  int64p(int(spoeTimeout.Milliseconds())),
+				ConnectTimeout: int64p(int(spoeTimeout.Milliseconds())),
 				Mode:           models.BackendModeTCP,
 			},
 			Servers: []models.Server{
