@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"reflect"
+	"time"
 )
 
 type Config struct {
@@ -19,6 +20,8 @@ type Upstream struct {
 	LocalBindAddress string
 	LocalBindPort    int
 	Protocol         string
+	ConnectTimeout   time.Duration
+	ReadTimeout      time.Duration
 
 	TLS
 
@@ -46,11 +49,14 @@ func (n UpstreamNode) Equal(o UpstreamNode) bool {
 }
 
 type Downstream struct {
-	LocalBindAddress  string
-	LocalBindPort     int
-	Protocol          string
-	TargetAddress     string
-	TargetPort        int
+	LocalBindAddress string
+	LocalBindPort    int
+	Protocol         string
+	TargetAddress    string
+	TargetPort       int
+	ConnectTimeout   time.Duration
+	ReadTimeout      time.Duration
+
 	EnableForwardFor  bool
 	AppNameHeaderName string
 

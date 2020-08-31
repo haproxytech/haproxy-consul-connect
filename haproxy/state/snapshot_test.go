@@ -18,12 +18,16 @@ func GetTestConsulConfig() consul.Config {
 			TargetAddress:     "128.0.0.5",
 			TargetPort:        8888,
 			AppNameHeaderName: "X-App",
+			ConnectTimeout:    consul.DefaultConnectTimeout,
+			ReadTimeout:       consul.DefaultReadTimeout,
 		},
 		Upstreams: []consul.Upstream{
 			consul.Upstream{
 				Name:             "service_1",
 				LocalBindAddress: "127.0.0.1",
 				LocalBindPort:    10000,
+				ConnectTimeout:   consul.DefaultConnectTimeout,
+				ReadTimeout:      consul.DefaultReadTimeout,
 				Nodes: []consul.UpstreamNode{
 					consul.UpstreamNode{
 						Host:   "1.2.3.4",
@@ -50,7 +54,7 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 				Frontend: models.Frontend{
 					Name:           "front_downstream",
 					DefaultBackend: "back_downstream",
-					ClientTimeout:  &clientTimeout,
+					ClientTimeout:  int64p(int(consul.DefaultReadTimeout.Milliseconds())),
 					Mode:           models.FrontendModeHTTP,
 					Httplog:        true,
 				},
@@ -91,7 +95,7 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 				Frontend: models.Frontend{
 					Name:           "front_service_1",
 					DefaultBackend: "back_service_1",
-					ClientTimeout:  &clientTimeout,
+					ClientTimeout:  int64p(int(consul.DefaultReadTimeout.Milliseconds())),
 					Mode:           models.FrontendModeHTTP,
 					Httplog:        true,
 				},
@@ -115,8 +119,8 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 			Backend{
 				Backend: models.Backend{
 					Name:           "back_downstream",
-					ServerTimeout:  &serverTimeout,
-					ConnectTimeout: &connectTimeout,
+					ServerTimeout:  int64p(int(consul.DefaultReadTimeout.Milliseconds())),
+					ConnectTimeout: int64p(int(consul.DefaultConnectTimeout.Milliseconds())),
 					Mode:           models.BackendModeHTTP,
 				},
 				Servers: []models.Server{
@@ -146,8 +150,8 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 			Backend{
 				Backend: models.Backend{
 					Name:           "back_service_1",
-					ServerTimeout:  &serverTimeout,
-					ConnectTimeout: &connectTimeout,
+					ServerTimeout:  int64p(int(consul.DefaultReadTimeout.Milliseconds())),
+					ConnectTimeout: int64p(int(consul.DefaultConnectTimeout.Milliseconds())),
 					Mode:           models.BackendModeHTTP,
 					Balance: &models.Balance{
 						Algorithm: models.BalanceAlgorithmLeastconn,
@@ -189,8 +193,8 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 			Backend{
 				Backend: models.Backend{
 					Name:           "spoe_back",
-					ServerTimeout:  &spoeTimeout,
-					ConnectTimeout: &spoeTimeout,
+					ServerTimeout:  int64p(int(spoeTimeout.Milliseconds())),
+					ConnectTimeout: int64p(int(spoeTimeout.Milliseconds())),
 					Mode:           models.BackendModeTCP,
 				},
 				Servers: []models.Server{

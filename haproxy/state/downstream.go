@@ -28,7 +28,7 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 		Frontend: models.Frontend{
 			Name:           feName,
 			DefaultBackend: beName,
-			ClientTimeout:  &clientTimeout,
+			ClientTimeout:  int64p(int(cfg.ReadTimeout.Milliseconds())),
 			Mode:           feMode,
 			Httplog:        opts.LogRequests,
 		},
@@ -85,8 +85,8 @@ func generateDownstream(opts Options, certStore CertificateStore, cfg consul.Dow
 	be := Backend{
 		Backend: models.Backend{
 			Name:           beName,
-			ServerTimeout:  &serverTimeout,
-			ConnectTimeout: &connectTimeout,
+			ServerTimeout:  int64p(int(cfg.ReadTimeout.Milliseconds())),
+			ConnectTimeout: int64p(int(cfg.ConnectTimeout.Milliseconds())),
 			Mode:           beMode,
 			Forwardfor:     forwardFor,
 		},

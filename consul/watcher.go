@@ -9,11 +9,14 @@ import (
 
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/command/connect/proxy"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	defaultDownstreamBindAddr = "0.0.0.0"
-	defaultUpstreamBindAddr   = "127.0.0.1"
+	DefaultDownstreamBindAddr = "0.0.0.0"
+	DefaultUpstreamBindAddr   = "127.0.0.1"
+	DefaultReadTimeout        = 60 * time.Second
+	DefaultConnectTimeout     = 30 * time.Second
 
 	errorWaitTime             = 5 * time.Second
 	preparedQueryPollInterval = 30 * time.Second
@@ -26,6 +29,8 @@ type upstream struct {
 	Datacenter       string
 	Protocol         string
 	Nodes            []*api.ServiceEntry
+	ReadTimeout      time.Duration
+	ConnectTimeout   time.Duration
 
 	done bool
 }
@@ -38,6 +43,8 @@ type downstream struct {
 	TargetPort        int
 	EnableForwardFor  bool
 	AppNameHeaderName string
+	ReadTimeout       time.Duration
+	ConnectTimeout    time.Duration
 }
 
 type certLeaf struct {
@@ -115,9 +122,11 @@ func (w *Watcher) Run() error {
 }
 
 func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
-	w.downstream.LocalBindAddress = defaultDownstreamBindAddr
+	w.downstream.LocalBindAddress = DefaultDownstreamBindAddr
 	w.downstream.LocalBindPort = srv.Port
-	w.downstream.TargetAddress = defaultUpstreamBindAddr
+	w.downstream.TargetAddress = DefaultUpstreamBindAddr
+	w.downstream.ReadTimeout = DefaultReadTimeout
+	w.downstream.ConnectTimeout = DefaultConnectTimeout
 
 	if srv.Proxy != nil && srv.Proxy.Config != nil {
 		if c, ok := srv.Proxy.Config["protocol"].(string); ok {
@@ -134,6 +143,22 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 		}
 		if a, ok := srv.Proxy.Config["appname_header"].(string); ok {
 			w.downstream.AppNameHeaderName = a
+		}
+		if a, ok := srv.Proxy.Config["connect_timeout"].(string); ok {
+			to, err := time.ParseDuration(a)
+			if err != nil {
+				log.Errorf("bad connect_timeout value in config: %s. Using default: %s", err, DefaultConnectTimeout)
+			} else {
+				w.downstream.ConnectTimeout = to
+			}
+		}
+		if a, ok := srv.Proxy.Config["read_timeout"].(string); ok {
+			to, err := time.ParseDuration(a)
+			if err != nil {
+				log.Errorf("bad read_timeout value in config: %s. Using default: %s", err, DefaultReadTimeout)
+			} else {
+				w.downstream.ReadTimeout = to
+			}
 		}
 	}
 
@@ -168,19 +193,45 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	}
 }
 
-func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
-	w.log.Infof("consul: watching upstream for service %s", up.DestinationName)
-
+func (w *Watcher) buildUpstream(up api.Upstream, name string) *upstream {
 	u := &upstream{
 		LocalBindAddress: up.LocalBindAddress,
 		LocalBindPort:    up.LocalBindPort,
 		Name:             name,
 		Datacenter:       up.Datacenter,
+		ReadTimeout:      DefaultReadTimeout,
+		ConnectTimeout:   DefaultConnectTimeout,
 	}
 
 	if p, ok := up.Config["protocol"].(string); ok {
 		u.Protocol = p
 	}
+
+	if a, ok := up.Config["read_timeout"].(string); ok {
+		to, err := time.ParseDuration(a)
+		if err != nil {
+			log.Errorf("upstream %s: bad read_timeout value in config: %s. Using default: %s", name, err, DefaultReadTimeout)
+		} else {
+			u.ReadTimeout = to
+		}
+	}
+
+	if a, ok := up.Config["connect_timeout"].(string); ok {
+		to, err := time.ParseDuration(a)
+		if err != nil {
+			log.Errorf("upstream %s: bad connect_timeout value in config: %s. Using default: %s", name, err, DefaultConnectTimeout)
+		} else {
+			u.ConnectTimeout = to
+		}
+	}
+
+	return u
+}
+
+func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
+	w.log.Infof("consul: watching upstream for service %s", up.DestinationName)
+
+	u := w.buildUpstream(up, name)
 
 	w.lock.Lock()
 	w.upstreams[name] = u
@@ -219,16 +270,7 @@ func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for prepared_query %s", up.DestinationName)
 
-	u := &upstream{
-		LocalBindAddress: up.LocalBindAddress,
-		LocalBindPort:    up.LocalBindPort,
-		Name:             name,
-		Datacenter:       up.Datacenter,
-	}
-
-	if p, ok := up.Config["protocol"].(string); ok {
-		u.Protocol = p
-	}
+	u := w.buildUpstream(up, name)
 
 	interval := preparedQueryPollInterval
 	if p, ok := up.Config["poll_interval"].(string); ok {
@@ -429,6 +471,8 @@ func (w *Watcher) genCfg() Config {
 			TargetAddress:     w.downstream.TargetAddress,
 			TargetPort:        w.downstream.TargetPort,
 			Protocol:          w.downstream.Protocol,
+			ConnectTimeout:    w.downstream.ConnectTimeout,
+			ReadTimeout:       w.downstream.ReadTimeout,
 			EnableForwardFor:  w.downstream.EnableForwardFor,
 			AppNameHeaderName: w.downstream.AppNameHeaderName,
 
@@ -446,6 +490,8 @@ func (w *Watcher) genCfg() Config {
 			LocalBindAddress: up.LocalBindAddress,
 			LocalBindPort:    up.LocalBindPort,
 			Protocol:         up.Protocol,
+			ConnectTimeout:   up.ConnectTimeout,
+			ReadTimeout:      up.ConnectTimeout,
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
