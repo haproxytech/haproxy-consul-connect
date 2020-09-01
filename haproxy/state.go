@@ -49,6 +49,7 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 
 			case c := <-h.cfgC:
 				log.Info("handling new configuration")
+				h.currentConsulConfig = &c
 				currentConfig = c
 				inputReceived = true
 			case <-resyncConfig:
