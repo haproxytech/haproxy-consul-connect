@@ -25,6 +25,7 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 	var currentConfig consul.Config
 	dirty := false
 	started := false
+	ready := false
 
 	waitAndRetry := func() {
 		time.Sleep(retryBackoff)
@@ -69,7 +70,6 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 				return err
 			}
 			started = true
-			close(h.Ready)
 		}
 
 		if dirty {
@@ -120,6 +120,11 @@ func (h *HAProxy) watch(sd *lib.Shutdown) error {
 			log.Error(err)
 			waitAndRetry()
 			continue
+		}
+
+		if !ready {
+			close(h.Ready)
+			ready = true
 		}
 
 		currentState = newState
