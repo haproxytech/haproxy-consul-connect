@@ -18,10 +18,18 @@ var (
 
 	reqOutRate = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "haproxy_connect_http_request_out_rate",
+		Help: "The rate of outgoing http requests",
+	}, []string{"service", "target"})
+	reqOut = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "haproxy_connect_http_request_out",
 		Help: "The total number of http requests",
 	}, []string{"service", "target"})
 	reqInRate = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "haproxy_connect_http_request_in_rate",
+		Help: "The rate of incomming http requests",
+	}, []string{"service"})
+	reqIn = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "haproxy_connect_http_request_in",
 		Help: "The total number of http requests",
 	}, []string{"service"})
 	resInTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -91,8 +99,6 @@ func (s *Stats) handle(stats *models.NativeStatsCollection) {
 			s.handleFrontend(stats)
 		case models.NativeStatTypeBackend:
 			s.handlebackend(stats)
-		case models.NativeStatTypeServer:
-			s.handleServer(stats)
 		}
 	}
 }
@@ -109,6 +115,7 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 
 	if targetService == "downstream" {
 		reqInRate.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.ReqRate))
+		reqIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.ReqTot))
 		connInCount.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Scur))
 		bytesInIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Bin))
 		bytesOutIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Bout))
@@ -121,6 +128,7 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 		resInTotal.WithLabelValues(s.cfg.ServiceName, "other").Set(statVal(stats.Stats.HrspOther))
 	} else {
 		reqOutRate.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.ReqRate))
+		reqOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.ReqTot))
 		connOutCount.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Scur))
 		bytesInOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Bin))
 		bytesOutOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Bout))
@@ -135,15 +143,15 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 }
 
 func (s *Stats) handlebackend(stats *models.NativeStat) {
+	if stats.Name == "spoe_back" {
+		return
+	}
+
 	targetService := strings.TrimPrefix(stats.Name, "back_")
 
 	if targetService == "downstream" {
-		resTimeIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Ttime) / 1000)
+		resTimeIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Rtime) / 1000)
 	} else {
-		resTimeOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Ttime) / 1000)
+		resTimeOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Rtime) / 1000)
 	}
-}
-
-func (s *Stats) handleServer(stats *models.NativeStat) {
-	resTimeOut.WithLabelValues(s.cfg.ServiceName, stats.Name).Set(statVal(stats.Stats.Ttime) / 1000)
 }
