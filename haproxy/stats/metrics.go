@@ -1,10 +1,9 @@
-package haproxy
+package stats
 
 import (
 	"strings"
 	"time"
 
-	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
 	"github.com/haproxytech/models"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -70,13 +69,8 @@ var (
 	}, []string{"service"})
 )
 
-type Stats struct {
-	service string
-	dpapi   *dataplane.Dataplane
-}
-
-func (s *Stats) Run() {
-	upMetric.WithLabelValues(s.service).Set(1)
+func (s *Stats) runMetrics() {
+	upMetric.WithLabelValues(s.cfg.ServiceName).Set(1)
 	for {
 		time.Sleep(time.Second)
 		stats, err := s.dpapi.Stats()
@@ -114,29 +108,29 @@ func (s *Stats) handleFrontend(stats *models.NativeStat) {
 	targetService := strings.TrimPrefix(stats.Name, "front_")
 
 	if targetService == "downstream" {
-		reqInRate.WithLabelValues(s.service).Set(statVal(stats.Stats.ReqRate))
-		connInCount.WithLabelValues(s.service).Set(statVal(stats.Stats.Scur))
-		bytesInIn.WithLabelValues(s.service).Set(statVal(stats.Stats.Bin))
-		bytesOutIn.WithLabelValues(s.service).Set(statVal(stats.Stats.Bout))
+		reqInRate.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.ReqRate))
+		connInCount.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Scur))
+		bytesInIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Bin))
+		bytesOutIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Bout))
 
-		resInTotal.WithLabelValues(s.service, "1xx").Set(statVal(stats.Stats.Hrsp1xx))
-		resInTotal.WithLabelValues(s.service, "2xx").Set(statVal(stats.Stats.Hrsp2xx))
-		resInTotal.WithLabelValues(s.service, "3xx").Set(statVal(stats.Stats.Hrsp3xx))
-		resInTotal.WithLabelValues(s.service, "4xx").Set(statVal(stats.Stats.Hrsp4xx))
-		resInTotal.WithLabelValues(s.service, "5xx").Set(statVal(stats.Stats.Hrsp5xx))
-		resInTotal.WithLabelValues(s.service, "other").Set(statVal(stats.Stats.HrspOther))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "1xx").Set(statVal(stats.Stats.Hrsp1xx))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "2xx").Set(statVal(stats.Stats.Hrsp2xx))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "3xx").Set(statVal(stats.Stats.Hrsp3xx))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "4xx").Set(statVal(stats.Stats.Hrsp4xx))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "5xx").Set(statVal(stats.Stats.Hrsp5xx))
+		resInTotal.WithLabelValues(s.cfg.ServiceName, "other").Set(statVal(stats.Stats.HrspOther))
 	} else {
-		reqOutRate.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.ReqRate))
-		connOutCount.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Scur))
-		bytesInOut.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Bin))
-		bytesOutOut.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Bout))
+		reqOutRate.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.ReqRate))
+		connOutCount.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Scur))
+		bytesInOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Bin))
+		bytesOutOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Bout))
 
-		resOutTotal.WithLabelValues(s.service, targetService, "1xx").Set(statVal(stats.Stats.Hrsp1xx))
-		resOutTotal.WithLabelValues(s.service, targetService, "2xx").Set(statVal(stats.Stats.Hrsp2xx))
-		resOutTotal.WithLabelValues(s.service, targetService, "3xx").Set(statVal(stats.Stats.Hrsp3xx))
-		resOutTotal.WithLabelValues(s.service, targetService, "4xx").Set(statVal(stats.Stats.Hrsp4xx))
-		resOutTotal.WithLabelValues(s.service, targetService, "5xx").Set(statVal(stats.Stats.Hrsp5xx))
-		resOutTotal.WithLabelValues(s.service, targetService, "other").Set(statVal(stats.Stats.HrspOther))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "1xx").Set(statVal(stats.Stats.Hrsp1xx))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "2xx").Set(statVal(stats.Stats.Hrsp2xx))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "3xx").Set(statVal(stats.Stats.Hrsp3xx))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "4xx").Set(statVal(stats.Stats.Hrsp4xx))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "5xx").Set(statVal(stats.Stats.Hrsp5xx))
+		resOutTotal.WithLabelValues(s.cfg.ServiceName, targetService, "other").Set(statVal(stats.Stats.HrspOther))
 	}
 }
 
@@ -144,12 +138,12 @@ func (s *Stats) handlebackend(stats *models.NativeStat) {
 	targetService := strings.TrimPrefix(stats.Name, "back_")
 
 	if targetService == "downstream" {
-		resTimeIn.WithLabelValues(s.service).Set(statVal(stats.Stats.Ttime) / 1000)
+		resTimeIn.WithLabelValues(s.cfg.ServiceName).Set(statVal(stats.Stats.Ttime) / 1000)
 	} else {
-		resTimeOut.WithLabelValues(s.service, targetService).Set(statVal(stats.Stats.Ttime) / 1000)
+		resTimeOut.WithLabelValues(s.cfg.ServiceName, targetService).Set(statVal(stats.Stats.Ttime) / 1000)
 	}
 }
 
 func (s *Stats) handleServer(stats *models.NativeStat) {
-	resTimeOut.WithLabelValues(s.service, stats.Name).Set(statVal(stats.Stats.Ttime) / 1000)
+	resTimeOut.WithLabelValues(s.cfg.ServiceName, stats.Name).Set(statVal(stats.Stats.Ttime) / 1000)
 }

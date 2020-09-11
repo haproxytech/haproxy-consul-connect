@@ -14,13 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	dataplaneUser = "haproxy"
-)
-
-var dataplanePass string
-
-var baseCfgTmpl = `
+const baseCfgTmpl = `
 global
 	master-worker
     stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
@@ -71,6 +65,8 @@ type haConfig struct {
 	StatsSock               string
 	DataplaneSock           string
 	DataplaneTransactionDir string
+	DataplaneUser           string
+	DataplanePass           string
 	LogsSock                string
 }
 
@@ -116,14 +112,15 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 		}
 	}()
 
-	dataplanePass = createRandomString()
+	cfg.DataplanePass = createRandomString()
+	cfg.DataplaneUser = "hapeoxy"
 
 	err = tmpl.Execute(cfgFile, baseParams{
 		NbThread:      runtime.GOMAXPROCS(0),
 		SocketPath:    cfg.StatsSock,
 		LogsPath:      cfg.LogsSock,
-		DataplaneUser: dataplaneUser,
-		DataplanePass: dataplanePass,
+		DataplaneUser: cfg.DataplaneUser,
+		DataplanePass: cfg.DataplanePass,
 	})
 	if err != nil {
 		sd.Done()

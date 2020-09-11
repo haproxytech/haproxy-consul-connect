@@ -3,18 +3,15 @@ package haproxy
 import (
 	"fmt"
 	"net"
-	"net/http"
-	"strconv"
-	"time"
 
 	spoe "github.com/criteo/haproxy-spoe-go"
 	"github.com/haproxytech/haproxy-consul-connect/consul"
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/dataplane"
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/haproxy_cmd"
 	"github.com/haproxytech/haproxy-consul-connect/haproxy/state"
+	"github.com/haproxytech/haproxy-consul-connect/haproxy/stats"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/hashicorp/consul/api"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mcuadros/go-syslog.v2"
 )
@@ -50,16 +47,16 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
-	return h.watch(sd)
-}
-
-func (h *HAProxy) start(sd *lib.Shutdown) error {
 	hc, err := newHaConfig(h.opts.ConfigBaseDir, sd)
 	if err != nil {
 		return err
 	}
 	h.haConfig = hc
 
+	return h.watch(sd)
+}
+
+func (h *HAProxy) start(sd *lib.Shutdown) error {
 	if h.opts.LogRequests {
 		err := h.startLogger()
 		if err != nil {
@@ -74,19 +71,19 @@ func (h *HAProxy) start(sd *lib.Shutdown) error {
 		}
 	}
 
-	dpc, err := haproxy_cmd.Start(sd, haproxy_cmd.Config{
+	var err error
+	h.dataplaneClient, err = haproxy_cmd.Start(sd, haproxy_cmd.Config{
 		HAProxyPath:             h.opts.HAProxyBin,
-		HAProxyConfigPath:       hc.HAProxy,
+		HAProxyConfigPath:       h.haConfig.HAProxy,
 		DataplanePath:           h.opts.DataplaneBin,
-		DataplaneTransactionDir: hc.DataplaneTransactionDir,
-		DataplaneSock:           hc.DataplaneSock,
-		DataplaneUser:           dataplaneUser,
-		DataplanePass:           dataplanePass,
+		DataplaneTransactionDir: h.haConfig.DataplaneTransactionDir,
+		DataplaneSock:           h.haConfig.DataplaneSock,
+		DataplaneUser:           h.haConfig.DataplaneUser,
+		DataplanePass:           h.haConfig.DataplanePass,
 	})
 	if err != nil {
 		return err
 	}
-	h.dataplaneClient = dpc
 
 	err = h.startStats()
 	if err != nil {
@@ -145,53 +142,22 @@ func (h *HAProxy) startStats() error {
 	if h.opts.StatsListenAddr == "" {
 		return nil
 	}
+
+	s := stats.New(
+		h.consulClient,
+		h.dataplaneClient,
+		h.Ready,
+		stats.Config{
+			RegisterService: h.opts.StatsRegisterService,
+			ListenAddr:      h.opts.StatsListenAddr,
+			ServiceName:     h.currentConsulConfig.ServiceName,
+			ServiceID:       h.currentConsulConfig.ServiceID,
+		})
+
 	go func() {
-		if !h.opts.StatsRegisterService {
-			return
-		}
-
-		_, portStr, err := net.SplitHostPort(h.opts.StatsListenAddr)
+		err := s.Run()
 		if err != nil {
-			log.Errorf("cannot parse stats listen addr: %s", err)
-		}
-		port, _ := strconv.Atoi(portStr)
-
-		reg := func() {
-			err = h.consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
-				ID:   fmt.Sprintf("%s-connect-stats", h.currentConsulConfig.ServiceID),
-				Name: fmt.Sprintf("%s-connect-stats", h.currentConsulConfig.ServiceName),
-				Port: port,
-				Checks: api.AgentServiceChecks{
-					&api.AgentServiceCheck{
-						HTTP:                           fmt.Sprintf("http://localhost:%d/metrics", port),
-						Interval:                       (10 * time.Second).String(),
-						DeregisterCriticalServiceAfter: time.Minute.String(),
-					},
-				},
-				Tags: []string{"connect-stats"},
-			})
-			if err != nil {
-				log.Errorf("cannot register stats service: %s", err)
-			}
-		}
-
-		reg()
-
-		for range time.Tick(time.Minute) {
-			reg()
-		}
-	}()
-	go (&Stats{
-		dpapi:   h.dataplaneClient,
-		service: h.currentConsulConfig.ServiceName,
-	}).Run()
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-
-		log.Infof("Starting stats server at %s", h.opts.StatsListenAddr)
-		err := http.ListenAndServe(h.opts.StatsListenAddr, nil)
-		if err != nil {
-			log.Errorf("error starting stats server: %s", err)
+			log.Error(err)
 		}
 	}()
 
