@@ -1,7 +1,6 @@
 package consul
 
 import (
-	"crypto/x509"
 	"fmt"
 	"reflect"
 	"time"
@@ -10,7 +9,6 @@ import (
 type Config struct {
 	ServiceName string
 	ServiceID   string
-	CAsPool     *x509.CertPool
 	Downstream  Downstream
 	Upstreams   []Upstream
 }
