@@ -204,6 +204,10 @@ func (w *Watcher) buildUpstream(up api.Upstream, name string) *upstream {
 		ConnectTimeout:   DefaultConnectTimeout,
 	}
 
+	if u.LocalBindAddress == "" {
+		u.LocalBindAddress = "127.0.0.1"
+	}
+
 	if p, ok := up.Config["protocol"].(string); ok {
 		u.Protocol = p
 	}
