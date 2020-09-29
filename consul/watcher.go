@@ -495,7 +495,7 @@ func (w *Watcher) genCfg() Config {
 			LocalBindPort:    up.LocalBindPort,
 			Protocol:         up.Protocol,
 			ConnectTimeout:   up.ConnectTimeout,
-			ReadTimeout:      up.ConnectTimeout,
+			ReadTimeout:      up.ReadTimeout,
 			TLS: TLS{
 				CAs:  w.certCAs,
 				Cert: w.leaf.Cert,
