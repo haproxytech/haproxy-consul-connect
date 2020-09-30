@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"

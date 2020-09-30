@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/haproxytech/haproxy-consul-connect/consul"
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstream, oldState, newState State) (State, error) {
@@ -36,7 +36,7 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 	}
 	if opts.LogRequests && opts.LogSocket != "" {
 		fe.LogTarget = &models.LogTarget{
-			ID:       int64p(0),
+			Index:    int64p(0),
 			Address:  opts.LogSocket,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,
@@ -51,14 +51,14 @@ func generateUpstream(opts Options, certStore CertificateStore, cfg consul.Upstr
 			ServerTimeout:  int64p(int(cfg.ReadTimeout.Milliseconds())),
 			ConnectTimeout: int64p(int(cfg.ConnectTimeout.Milliseconds())),
 			Balance: &models.Balance{
-				Algorithm: models.BalanceAlgorithmLeastconn,
+				Algorithm: stringp(models.BalanceAlgorithmLeastconn),
 			},
 			Mode: beMode,
 		},
 	}
 	if opts.LogRequests && opts.LogSocket != "" {
 		be.LogTarget = &models.LogTarget{
-			ID:       int64p(0),
+			Index:    int64p(0),
 			Address:  opts.LogSocket,
 			Facility: models.LogTargetFacilityLocal0,
 			Format:   models.LogTargetFormatRfc5424,

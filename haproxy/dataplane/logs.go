@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 func (c *Dataplane) LogTargets(parentType, parentName string) ([]models.LogTarget, error) {
@@ -14,7 +14,7 @@ func (c *Dataplane) LogTargets(parentType, parentName string) ([]models.LogTarge
 
 	var res resT
 
-	err := c.makeReq(http.MethodGet, fmt.Sprintf("/v1/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s", parentType, parentName), nil, &res)
+	err := c.makeReq(http.MethodGet, fmt.Sprintf("/v2/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s", parentType, parentName), nil, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -26,5 +26,5 @@ func (t *tnx) CreateLogTargets(parentType, parentName string, rule models.LogTar
 	if err := t.ensureTnx(); err != nil {
 		return err
 	}
-	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s&transaction_id=%s", parentType, parentName, t.txID), rule, nil)
+	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v2/services/haproxy/configuration/log_targets?parent_type=%s&parent_name=%s&transaction_id=%s", parentType, parentName, t.txID), rule, nil)
 }

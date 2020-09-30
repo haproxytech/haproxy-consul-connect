@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -53,7 +53,7 @@ func (t *tnx) ensureTnx() error {
 	}
 
 	res := models.Transaction{}
-	err = t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/transactions?version=%d", v), nil, &res)
+	err = t.client.makeReq(http.MethodPost, fmt.Sprintf("/v2/services/haproxy/transactions?version=%d", v), nil, &res)
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func (c *Dataplane) ConfigVersion() (int, error) {
 	var res struct {
 		Version int `json:"_version"`
 	}
-	err := c.makeReq(http.MethodGet, "/v1/services/haproxy/configuration/frontends", nil, &res)
+	err := c.makeReq(http.MethodGet, "/v2/services/haproxy/configuration/frontends", nil, &res)
 	if err != nil {
 		return 0, err
 	}
@@ -86,17 +86,17 @@ func (c *Dataplane) ConfigVersion() (int, error) {
 }
 
 func (c *Dataplane) Ping() error {
-	return c.makeReq(http.MethodGet, "/v1/specification", nil, nil)
+	return c.makeReq(http.MethodGet, "/v2/specification", nil, nil)
 }
 
 func (c *Dataplane) Stats() (models.NativeStats, error) {
 	res := models.NativeStats{}
-	return res, c.makeReq(http.MethodGet, "/v1/services/haproxy/stats/native", nil, &res)
+	return res, c.makeReq(http.MethodGet, "/v2/services/haproxy/stats/native", nil, &res)
 }
 
 func (t *tnx) Commit() error {
 	if t.txID != "" {
-		err := t.client.makeReq(http.MethodPut, fmt.Sprintf("/v1/services/haproxy/transactions/%s", t.txID), nil, nil)
+		err := t.client.makeReq(http.MethodPut, fmt.Sprintf("/v2/services/haproxy/transactions/%s", t.txID), nil, nil)
 		if err != nil {
 			return err
 		}

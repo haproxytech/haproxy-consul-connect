@@ -3,7 +3,7 @@ package state
 import (
 	"testing"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 	"github.com/stretchr/testify/require"
 )
 

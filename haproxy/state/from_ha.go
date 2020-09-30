@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 type HAProxyRead interface {

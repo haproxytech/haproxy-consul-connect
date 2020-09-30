@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 func (c *Dataplane) Frontends() ([]models.Frontend, error) {
@@ -14,7 +14,7 @@ func (c *Dataplane) Frontends() ([]models.Frontend, error) {
 
 	var res resT
 
-	err := c.makeReq(http.MethodGet, "/v1/services/haproxy/configuration/frontends", nil, &res)
+	err := c.makeReq(http.MethodGet, "/v2/services/haproxy/configuration/frontends", nil, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (c *Dataplane) Binds(feName string) ([]models.Bind, error) {
 
 	var res resT
 
-	err := c.makeReq(http.MethodGet, fmt.Sprintf("/v1/services/haproxy/configuration/binds?frontend=%s", feName), nil, &res)
+	err := c.makeReq(http.MethodGet, fmt.Sprintf("/v2/services/haproxy/configuration/binds?frontend=%s", feName), nil, &res)
 	if err != nil {
 		return nil, err
 	}
@@ -41,19 +41,19 @@ func (t *tnx) CreateFrontend(fe models.Frontend) error {
 	if err := t.ensureTnx(); err != nil {
 		return err
 	}
-	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/frontends?transaction_id=%s", t.txID), fe, nil)
+	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v2/services/haproxy/configuration/frontends?transaction_id=%s", t.txID), fe, nil)
 }
 
 func (t *tnx) DeleteFrontend(name string) error {
 	if err := t.ensureTnx(); err != nil {
 		return err
 	}
-	return t.client.makeReq(http.MethodDelete, fmt.Sprintf("/v1/services/haproxy/configuration/frontends/%s?transaction_id=%s", name, t.txID), nil, nil)
+	return t.client.makeReq(http.MethodDelete, fmt.Sprintf("/v2/services/haproxy/configuration/frontends/%s?transaction_id=%s", name, t.txID), nil, nil)
 }
 
 func (t *tnx) CreateBind(feName string, bind models.Bind) error {
 	if err := t.ensureTnx(); err != nil {
 		return err
 	}
-	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v1/services/haproxy/configuration/binds?frontend=%s&transaction_id=%s", feName, t.txID), bind, nil)
+	return t.client.makeReq(http.MethodPost, fmt.Sprintf("/v2/services/haproxy/configuration/binds?frontend=%s&transaction_id=%s", feName, t.txID), bind, nil)
 }

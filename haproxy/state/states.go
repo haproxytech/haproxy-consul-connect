@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/haproxytech/haproxy-consul-connect/consul"
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 )
 
 const (

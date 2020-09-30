@@ -2,24 +2,33 @@ package haproxy_cmd
 
 import (
 	"fmt"
+	"io"
 	"os/exec"
 	"path"
 	"sync/atomic"
 	"syscall"
 
-	"github.com/haproxytech/haproxy-consul-connect/haproxy/halog"
 	"github.com/haproxytech/haproxy-consul-connect/lib"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
-func runCommand(sd *lib.Shutdown, cmdPath string, args ...string) (*exec.Cmd, error) {
+type Logger func(io.Reader)
+
+func runCommand(sd *lib.Shutdown, logger Logger, cmdPath string, args ...string) (*exec.Cmd, error) {
 	_, file := path.Split(cmdPath)
 	cmd := exec.Command(cmdPath, args...)
-	err := halog.Cmd("haproxy", cmd)
+
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
 	}
+	logger(stdout)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	logger(stderr)
 
 	sd.Add(1)
 	err = cmd.Start()

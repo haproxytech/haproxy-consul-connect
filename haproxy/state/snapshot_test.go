@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/haproxytech/haproxy-consul-connect/consul"
-	"github.com/haproxytech/models"
+	"github.com/haproxytech/models/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,20 +68,20 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 					Verify:         models.BindVerifyRequired,
 				},
 				LogTarget: &models.LogTarget{
-					ID:       int64p(0),
+					Index:    int64p(0),
 					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
 				Filter: &FrontendFilter{
 					Filter: models.Filter{
-						ID:         int64p(0),
+						Index:      int64p(0),
 						Type:       models.FilterTypeSpoe,
 						SpoeEngine: "intentions",
 						SpoeConfig: baseCfg + "/spoe",
 					},
 					Rule: models.TCPRequestRule{
-						ID:       int64p(0),
+						Index:    int64p(0),
 						Action:   models.TCPRequestRuleActionReject,
 						Cond:     models.TCPRequestRuleCondUnless,
 						CondTest: "{ var(sess.connect.auth) -m int eq 1 }",
@@ -105,7 +105,7 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 					Port:    int64p(10000),
 				},
 				LogTarget: &models.LogTarget{
-					ID:       int64p(0),
+					Index:    int64p(0),
 					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
@@ -131,14 +131,14 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 					},
 				},
 				LogTarget: &models.LogTarget{
-					ID:       int64p(0),
+					Index:    int64p(0),
 					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,
 				},
 				HTTPRequestRules: []models.HTTPRequestRule{
 					{
-						ID:        int64p(0),
+						Index:     int64p(0),
 						Type:      models.HTTPRequestRuleTypeAddHeader,
 						HdrName:   "X-App",
 						HdrFormat: "%[var(sess.connect.source_app)]",
@@ -154,7 +154,7 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 					ConnectTimeout: int64p(int(consul.DefaultConnectTimeout.Milliseconds())),
 					Mode:           models.BackendModeHTTP,
 					Balance: &models.Balance{
-						Algorithm: models.BalanceAlgorithmLeastconn,
+						Algorithm: stringp(models.BalanceAlgorithmLeastconn),
 					},
 				},
 				Servers: []models.Server{
@@ -182,7 +182,7 @@ func GetTestHAConfig(baseCfg string, certVersion string) State {
 					},
 				},
 				LogTarget: &models.LogTarget{
-					ID:       int64p(0),
+					Index:    int64p(0),
 					Address:  baseCfg + "/logs.sock",
 					Facility: models.LogTargetFacilityLocal0,
 					Format:   models.LogTargetFormatRfc5424,

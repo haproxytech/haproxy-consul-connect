@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -73,6 +74,8 @@ func startConnectService(t *testing.T, sd *lib.Shutdown, client *api.Client, reg
 
 	sourceHap := haproxy.New(client, watcher.C, haproxy.Options{
 		EnableIntentions: true,
+		HAProxyBin:       os.Getenv("HAPROXY"),
+		DataplaneBin:     os.Getenv("DATAPLANEAPI"),
 	})
 	go func() {
 		err := sourceHap.Run(sd)
