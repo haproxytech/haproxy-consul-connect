@@ -179,6 +179,8 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 				default:
 					w.startUpstreamService(up, name)
 				}
+			} else {
+				w.updateUpstream(up, w.upstreams[name])
 			}
 		}
 	}
@@ -194,15 +196,12 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 	}
 }
 
-func (w *Watcher) buildUpstream(up api.Upstream, name string) *upstream {
-	u := &upstream{
-		LocalBindAddress: up.LocalBindAddress,
-		LocalBindPort:    up.LocalBindPort,
-		Name:             name,
-		Datacenter:       up.Datacenter,
-		ReadTimeout:      DefaultReadTimeout,
-		ConnectTimeout:   DefaultConnectTimeout,
-	}
+func (w *Watcher) updateUpstream(up api.Upstream, u *upstream) {
+	u.LocalBindAddress = up.LocalBindAddress
+	u.LocalBindPort = up.LocalBindPort
+	u.Datacenter = up.Datacenter
+	u.ReadTimeout = DefaultReadTimeout
+	u.ConnectTimeout = DefaultConnectTimeout
 
 	if u.LocalBindAddress == "" {
 		u.LocalBindAddress = "127.0.0.1"
@@ -215,7 +214,7 @@ func (w *Watcher) buildUpstream(up api.Upstream, name string) *upstream {
 	if a, ok := up.Config["read_timeout"].(string); ok {
 		to, err := time.ParseDuration(a)
 		if err != nil {
-			log.Errorf("upstream %s: bad read_timeout value in config: %s. Using default: %s", name, err, DefaultReadTimeout)
+			log.Errorf("upstream %s: bad read_timeout value in config: %s. Using default: %s", u.Name, err, DefaultReadTimeout)
 		} else {
 			u.ReadTimeout = to
 		}
@@ -224,19 +223,21 @@ func (w *Watcher) buildUpstream(up api.Upstream, name string) *upstream {
 	if a, ok := up.Config["connect_timeout"].(string); ok {
 		to, err := time.ParseDuration(a)
 		if err != nil {
-			log.Errorf("upstream %s: bad connect_timeout value in config: %s. Using default: %s", name, err, DefaultConnectTimeout)
+			log.Errorf("upstream %s: bad connect_timeout value in config: %s. Using default: %s", u.Name, err, DefaultConnectTimeout)
 		} else {
 			u.ConnectTimeout = to
 		}
 	}
-
-	return u
 }
 
 func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for service %s", up.DestinationName)
 
-	u := w.buildUpstream(up, name)
+	u := &upstream{
+		Name: name,
+	}
+
+	w.updateUpstream(up, u)
 
 	w.lock.Lock()
 	w.upstreams[name] = u
@@ -275,7 +276,11 @@ func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for prepared_query %s", up.DestinationName)
 
-	u := w.buildUpstream(up, name)
+	u := &upstream{
+		Name: name,
+	}
+
+	w.updateUpstream(up, u)
 
 	interval := preparedQueryPollInterval
 	if p, ok := up.Config["poll_interval"].(string); ok {
