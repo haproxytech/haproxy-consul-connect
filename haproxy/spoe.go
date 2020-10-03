@@ -59,16 +59,35 @@ func NewSPOEHandler(c *api.Client, cfg func() consul.Config) *SPOEHandler {
 	}
 }
 
-func (h *SPOEHandler) Handler(args []spoe.Message) ([]spoe.Action, error) {
+func (h *SPOEHandler) Handler(msgs *spoe.MessageIterator) ([]spoe.Action, error) {
 	cfg := h.cfg()
-	for _, m := range args {
+	for msgs.Next() {
+		m := msgs.Message
+
 		if m.Name != "check-intentions" {
 			continue
 		}
 
-		certBytes, ok := m.Args["cert"].([]byte)
-		if !ok {
-			return nil, fmt.Errorf("spoe handler: expected cert bytes in message, got: %+v", m.Args)
+		var certBytes []byte
+		for m.Args.Next() {
+			arg := m.Args.Arg
+
+			switch arg.Name {
+			case "cert":
+				var ok bool
+				certBytes, ok = arg.Value.([]byte)
+				if !ok {
+					return nil, fmt.Errorf("spoe handler: expected cert bytes in message, got: %+v", m.Args)
+				}
+			}
+		}
+
+		if err := msgs.Error(); err != nil {
+			return nil, fmt.Errorf("spoe handler: %s", err)
+		}
+
+		if certBytes == nil {
+			return nil, fmt.Errorf("spoe handler: cert is required")
 		}
 
 		cert, err := h.decodeCertificate(certBytes)
