@@ -175,9 +175,9 @@ func (w *Watcher) handleProxyChange(first bool, srv *api.AgentService) {
 			if !ok {
 				switch up.DestinationType {
 				case api.UpstreamDestTypePreparedQuery:
-					w.startUpstreamPreparedQuery(up, name)
+					w.startUpstreamPreparedQuery(first, up, name)
 				default:
-					w.startUpstreamService(up, name)
+					w.startUpstreamService(first, up, name)
 				}
 			} else {
 				w.updateUpstream(up, w.upstreams[name])
@@ -230,8 +230,12 @@ func (w *Watcher) updateUpstream(up api.Upstream, u *upstream) {
 	}
 }
 
-func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
+func (w *Watcher) startUpstreamService(startup bool, up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for service %s", up.DestinationName)
+
+	if startup {
+		w.ready.Add(1)
+	}
 
 	u := &upstream{
 		Name: name,
@@ -245,6 +249,7 @@ func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 
 	go func() {
 		index := uint64(0)
+		first := true
 		for {
 			if u.done {
 				return
@@ -269,12 +274,22 @@ func (w *Watcher) startUpstreamService(up api.Upstream, name string) {
 				w.lock.Unlock()
 				w.notifyChanged()
 			}
+
+			if startup && first {
+				w.ready.Done()
+			}
+
+			first = false
 		}
 	}()
 }
 
-func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
+func (w *Watcher) startUpstreamPreparedQuery(startup bool, up api.Upstream, name string) {
 	w.log.Infof("consul: watching upstream for prepared_query %s", up.DestinationName)
+
+	if startup {
+		w.ready.Add(1)
+	}
 
 	u := &upstream{
 		Name: name,
@@ -304,6 +319,7 @@ func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
 
 	go func() {
 		var last []*api.ServiceEntry
+		first := true
 		for {
 			if u.done {
 				return
@@ -332,6 +348,11 @@ func (w *Watcher) startUpstreamPreparedQuery(up api.Upstream, name string) {
 				last = nodesP
 			}
 
+			if startup && first {
+				w.ready.Done()
+			}
+
+			first = false
 			time.Sleep(interval)
 		}
 	}()
