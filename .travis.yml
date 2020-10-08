@@ -3,12 +3,15 @@ go:
 - 1.x
 sudo: false
 before_script:
-  - sudo wget https://github.com/haproxytech/dataplaneapi/releases/download/v1.2.5/dataplaneapi -O /usr/local/bin/dataplaneapi
+  - sudo curl -sfSL https://github.com/haproxytech/dataplaneapi/releases/download/v2.1.0/dataplaneapi_2.1.0_Linux_x86_64.tar.gz -o dataplane.tar.gz
+  - sudo mkdir /tmp/dataplane
+  - sudo tar -xzf dataplane.tar.gz -C /tmp/dataplane --strip-components=1
+  - sudo mv /tmp/dataplane/dataplaneapi /usr/local/bin/dataplaneapi
   - sudo chmod +x /usr/local/bin/dataplaneapi
   - sudo apt-get install -y software-properties-common
-  - sudo add-apt-repository -y ppa:vbernat/haproxy-2.0
+  - sudo add-apt-repository -y ppa:vbernat/haproxy-2.1
   - sudo apt-get update
-  - sudo apt-get install -y haproxy=2.0.\*
+  - sudo apt-get install -y haproxy=2.1.\*
   - haproxy -vv
 script: make travis
 addons:
@@ -18,15 +21,3 @@ addons:
       - libssl-dev
       - zlib1g-dev
       - libpcre3-dev
-before_deploy:
-- echo "Deploying $TRAVIS_TAG to GitHub releases"
-- tar czf haproxy-connect.tar.gz haproxy-connect
-deploy:
-  provider: releases
-  api_key:
-    secure: TcgCsEiX4V4mnkvogsYD1T9MtZETtugNk06rtRWxNxUChBmndyYk6fGE0dZRfZcBKY4Li9MsT3p9/Km8B36wBcu7w+t8hOC+qKZMfsXeFHtcOYETuRa1JhzUpeTisTgLd+JmYPUnffL7mxocWWCnenQkZW6+pLpYA3pE4JC7LmBr4UyuARC3u8zyXQ3q4FTUL2tzvA9BPRiZNDnIAapcA5h9cqMH0u7CwFbRnhGL6BbAav5SEALymlmQ48dqK2dhcbqgdxlxaf/9segEKJSEdSnUiHtlTKVCTd+o5gBF3qmF/EcpiO6Oy4RlGAqRtOsVl6x3/renRbJ3phys8ySYVb90/jsYAL2IsAuUDrW4lVLp7cwt7VckLhi2TzLjWOlZWg1MJti4sbfZ4b9EKGy3x2hnJz9xBSzDpi/VRWgIrmEOea2Agi4dVsBXppcB9AOsk9a/QK52AI3p5S+9wJteDVa6DuhY3vCK8Gm9Yir9evdOZpXXTd29J9uQxtlEqOHqFY0np3pu1yokpUVmKjIrgLHJ9dL0okLoPvcUpP2nrFFzzEYBe80TVCVo2mzek1nU0+NgVBpFzR54D/cN91lBcGMZLAiNALyqv49t4Wm5sm9dKHB0BnBxTY+MXWKsjq1ZvVABYrXTsB+p4xgNUhUGW9h1MW0d8I7W4ZC9F5JSktk=
-  file: haproxy-connect.tar.gz
-  skip_cleanup: true
-  on:
-    repo: criteo/haproxy-consul-connect
-    tags: true
