@@ -22,6 +22,7 @@ global
 	tune.ssl.default-dh-param 1024
 	nbproc 1
 	nbthread {{.NbThread}}
+	ulimit-n 65536
 
 defaults
 	http-reuse always
