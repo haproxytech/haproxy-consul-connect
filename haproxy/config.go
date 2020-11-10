@@ -17,8 +17,8 @@ import (
 const baseCfgTmpl = `
 global
 	master-worker
-    stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
-    stats timeout 2m
+	stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
+	stats timeout 2m
 	tune.ssl.default-dh-param 1024
 	nbproc 1
 	nbthread {{.NbThread}}
@@ -29,25 +29,27 @@ defaults
 
 userlist controller
 	user {{.DataplaneUser}} insecure-password {{.DataplanePass}}
+
 `
 
 const spoeConfTmpl = `
 [intentions]
 
 spoe-agent intentions-agent
-    messages check-intentions
+	messages check-intentions
 
-    option var-prefix connect
+	option var-prefix connect
 
-    timeout hello      3000ms
-    timeout idle       3000s
-    timeout processing 3000ms
+	timeout hello      3000ms
+	timeout idle       3000s
+	timeout processing 3000ms
 
-    use-backend spoe_back
+	use-backend spoe_back
 
 spoe-message check-intentions
-    args ip=src cert=ssl_c_der
-    event on-frontend-tcp-request
+	args ip=src cert=ssl_c_der
+	event on-frontend-tcp-request
+
 `
 
 type baseParams struct {
