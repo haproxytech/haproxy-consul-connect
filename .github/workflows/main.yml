@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name:
+name: haproxy-consul-connect
 
 # Controls when the action will run.
 on:
@@ -48,8 +48,12 @@ jobs:
 #          args: --timeout 600s
 
   build:
+    name: build and run e2e for master vs Consul
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        consul_version: ["1.9.3"]
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -64,6 +68,18 @@ jobs:
 
       - name: Build check
         run: make bin
+
+      - name: e2e Consul test
+        run: |
+          cp haproxy-connect test/integration/connect/haproxy/
+          cd test/integration/connect/haproxy/
+          docker rmi -f consul-dev
+          docker pull consul:${{ matrix.consul_version }}
+          docker tag consul:${{ matrix.consul_version }} consul-dev
+          docker build -f Dockerfile-consul-haproxy-consul-connect . -t haproxytech/haproxy-consul-connect:master  --build-arg "HAPROXY_CONSUL_CONNECT_VERSION=0.9.0"
+          HAPROXY_CONSUL_CONNECT_VERSION=master go test -tags integration "$@"
+        env:
+          TERM: linux
 
   test:
     runs-on: ubuntu-latest
