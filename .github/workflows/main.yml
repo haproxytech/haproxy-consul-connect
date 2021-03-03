@@ -1,0 +1,87 @@
+# This is a basic workflow to help you get started with Actions
+
+name:
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  lint:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      # Runs a single command using the runners shell
+      - name: Linting checks
+        run: make check
+
+# failing so disabled for now
+#  golangci:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: golangci-lint
+#        uses: golangci/golangci-lint-action@v2
+#        with:
+#          # Optional: version of golangci-lint to use in form of v1.2 or v1.2.3 or `latest` to use the latest version
+#          version: latest
+#          # Optional: golangci-lint command line arguments.
+#          args: --timeout 600s
+
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build check
+        run: make bin
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: setup environment
+        run: |
+          sudo curl -sfSL https://github.com/haproxytech/dataplaneapi/releases/download/v2.1.0/dataplaneapi_2.1.0_Linux_x86_64.tar.gz -o dataplane.tar.gz
+          sudo mkdir /tmp/dataplane
+          sudo tar -xzf dataplane.tar.gz -C /tmp/dataplane --strip-components=1
+          sudo mv /tmp/dataplane/dataplaneapi /usr/local/bin/dataplaneapi
+          sudo chmod +x /usr/local/bin/dataplaneapi
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y ppa:vbernat/haproxy-2.1
+          sudo apt-get update
+          sudo apt-get install -y haproxy=2.1.\*
+          haproxy -vv
+
+      - name: go tests
+        run: HAPROXY=/usr/sbin/haproxy DATAPLANEAPI=/usr/local/bin/dataplaneapi go test -timeout 600s ./...
