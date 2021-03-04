@@ -1,0 +1,38 @@
+name: consul
+on:
+  schedule:
+    - cron: '42 0 * * *'
+jobs:
+  consul-e2e:
+    name: run e2e for consul master vs haproxy-consul-connect
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        haproxy_consul_connect_version: ["0.9.0"]
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build check
+        run: make bin
+
+      - name: Consul e2e test
+        run: |
+          cp haproxy-connect test/integration/connect/haproxy/
+          cd test/integration/connect/haproxy/
+          docker rmi -f consul-dev
+          docker build -f Dockerfile-consul-dev . -t consul-dev --build-arg "CONSUL_TAG=master"
+          HAPROXY_CONSUL_CONNECT_VERSION=${{ matrix.haproxy_consul_connect_version }} go test -tags integration "$@"
+        env:
+          TERM: linux
+
