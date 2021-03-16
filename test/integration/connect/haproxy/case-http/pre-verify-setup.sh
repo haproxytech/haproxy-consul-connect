@@ -1,0 +1,2 @@
+wait_for_health_check_passing_state s1 primary
+wait_for_health_check_passing_state s2 primary
