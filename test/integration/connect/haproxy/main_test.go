@@ -52,6 +52,11 @@ func runCmd(t *testing.T, c string, env ...string) {
 
 // Discover the cases so we pick up both oss and ent copies.
 func discoverCases() ([]string, error) {
+	testName, ok := os.LookupEnv("TESTNAME")
+	if ok {
+		return []string{testName}, nil
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
