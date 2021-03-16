@@ -790,7 +790,7 @@ function wait_for_health_check_passing_state {
   local counter=0
 
   while [ "$(docker_curl "$DC" -sLf "http://localhost:8500/v1/health/connect/${SERVICE_ID}?passing")" = "[]" ]; do
-    echo "Waiting $SERVICE_ID service health check..."
+    echo "Waiting $SERVICE_ID service health check in datacenter "$DC"..."
     sleep 1
 
     if [ $MAX_RETRY -eq $counter ]; then
