@@ -1,7 +1,7 @@
 BIN := haproxy-connect
 SOURCES := $(shell find . -name '*.go')
 test-haproxy-integ:
-	@go test -v -timeout=30m -tags integration ./test/integration/connect/haproxy
+	@TESTNAME=$(TESTNAME) go test -v -timeout=30m -tags integration ./test/integration/connect/haproxy
 
 
 all: test bin
