@@ -47,7 +47,7 @@ func New(consulClient *api.Client, cfg chan consul.Config, opts Options) *HAProx
 }
 
 func (h *HAProxy) Run(sd *lib.Shutdown) error {
-	hc, err := newHaConfig(h.opts.ConfigBaseDir, sd)
+	hc, err := newHaConfig(h.opts.ConfigBaseDir, h.opts.HAProxyParams, sd)
 	if err != nil {
 		return err
 	}

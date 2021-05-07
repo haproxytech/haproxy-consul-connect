@@ -60,6 +60,9 @@ func validateRequirements(dataplaneBin, haproxyBin string) error {
 }
 
 func main() {
+	haproxyParamsFlag := stringSliceFlag{}
+
+	flag.Var(&haproxyParamsFlag, "haproxy-param", "Global or defaults Haproxy config parameter to set in config. Can be specified multiple times. Must be of the form `defaults.name=value` or `global.name=value`")
 	versionFlag := flag.Bool("version", false, "Show version and exit")
 	logLevel := flag.String("log-level", "INFO", "Log level")
 	consulAddr := flag.String("http-addr", "127.0.0.1:8500", "Consul agent address")
@@ -128,6 +131,11 @@ func main() {
 		log.Fatalf("Please specify -sidecar-for or -sidecar-for-tag")
 	}
 
+	haproxyParams, err := makeHAProxyParams(haproxyParamsFlag)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	consulLogger := &consulLogger{}
 	watcher := consul.New(serviceID, consulClient, consulLogger)
 	go func() {
@@ -145,6 +153,7 @@ func main() {
 		StatsListenAddr:      *statsListenAddr,
 		StatsRegisterService: *statsServiceRegister,
 		LogRequests:          ll == log.TraceLevel,
+		HAProxyParams:        haproxyParams,
 	})
 	sd.Add(1)
 	go func() {

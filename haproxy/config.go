@@ -3,6 +3,7 @@ package haproxy
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -14,18 +15,32 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var defaultsHAProxyParams = HAProxyParams{
+	Globals: map[string]string{
+		"stats":                     "timeout 2m",
+		"tune.ssl.default-dh-param": "1024",
+		"nbproc":                    "1",
+		"nbthread":                  fmt.Sprint(runtime.GOMAXPROCS(0)),
+		"ulimit-n":                  "65536",
+		"maxconn":                   "32000",
+	},
+	Defaults: map[string]string{
+		"http-reuse": "always",
+	},
+}
+
 const baseCfgTmpl = `
 global
 	master-worker
 	stats socket {{.SocketPath}} mode 600 level admin expose-fd listeners
-	stats timeout 2m
-	tune.ssl.default-dh-param 1024
-	nbproc 1
-	nbthread {{.NbThread}}
-	ulimit-n 65536
+	{{ range $k, $v := .HAProxyParams.Globals}}
+	{{$k}} {{$v}}
+	{{ end }}
 
 defaults
-	http-reuse always
+	{{ range $k, $v := .HAProxyParams.Defaults}}
+	{{$k}} {{$v}}
+	{{ end }}
 
 userlist controller
 	user {{.DataplaneUser}} insecure-password {{.DataplanePass}}
@@ -53,11 +68,10 @@ spoe-message check-intentions
 `
 
 type baseParams struct {
-	NbThread      int
 	SocketPath    string
 	DataplaneUser string
 	DataplanePass string
-	LogsPath      string
+	HAProxyParams HAProxyParams
 }
 
 type haConfig struct {
@@ -73,7 +87,7 @@ type haConfig struct {
 	LogsSock                string
 }
 
-func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
+func newHaConfig(baseDir string, params HAProxyParams, sd *lib.Shutdown) (*haConfig, error) {
 	cfg := &haConfig{}
 
 	sd.Add(1)
@@ -119,11 +133,10 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	cfg.DataplaneUser = "hapeoxy"
 
 	err = tmpl.Execute(cfgFile, baseParams{
-		NbThread:      runtime.GOMAXPROCS(0),
 		SocketPath:    cfg.StatsSock,
-		LogsPath:      cfg.LogsSock,
 		DataplaneUser: cfg.DataplaneUser,
 		DataplanePass: cfg.DataplanePass,
+		HAProxyParams: defaultsHAProxyParams.With(params),
 	})
 	if err != nil {
 		sd.Done()
