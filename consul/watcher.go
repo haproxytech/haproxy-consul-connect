@@ -71,8 +71,9 @@ type Watcher struct {
 	certCAPool *x509.CertPool
 	leaf       *certLeaf
 
-	update chan struct{}
-	log    Logger
+	update     chan struct{}
+	shutdownCh chan struct{}
+	log        Logger
 }
 
 // New builds a new watcher
@@ -81,10 +82,11 @@ func New(service string, consul *api.Client, log Logger) *Watcher {
 		service: service,
 		consul:  consul,
 
-		C:         make(chan Config),
-		upstreams: make(map[string]*upstream),
-		update:    make(chan struct{}, 1),
-		log:       log,
+		C:          make(chan Config),
+		upstreams:  make(map[string]*upstream),
+		update:     make(chan struct{}, 1),
+		shutdownCh: make(chan struct{}),
+		log:        log,
 	}
 }
 
@@ -251,9 +253,11 @@ func (w *Watcher) startUpstreamService(startup bool, up api.Upstream, name strin
 		index := uint64(0)
 		first := true
 		for {
+			w.lock.Lock()
 			if u.done {
 				return
 			}
+			w.lock.Unlock()
 			nodes, meta, err := w.consul.Health().Connect(up.DestinationName, "", true, &api.QueryOptions{
 				Datacenter: up.Datacenter,
 				WaitTime:   10 * time.Minute,
@@ -404,6 +408,9 @@ func (w *Watcher) watchLeaf() {
 			w.ready.Done()
 			first = false
 		}
+		if w.isStopped() {
+			return
+		}
 	}
 }
 
@@ -434,6 +441,9 @@ func (w *Watcher) watchService(service string, handler func(first bool, srv *api
 		}
 
 		first = false
+		if w.isStopped() {
+			return
+		}
 	}
 }
 
@@ -477,6 +487,9 @@ func (w *Watcher) watchCA() {
 			w.log.Infof("consul: CA certs ready")
 			w.ready.Done()
 			first = false
+		}
+		if w.isStopped() {
+			return
 		}
 	}
 }
@@ -570,5 +583,18 @@ func (w *Watcher) notifyChanged() {
 	select {
 	case w.update <- struct{}{}:
 	default:
+	}
+}
+
+func (w *Watcher) Stop() {
+	close(w.shutdownCh)
+}
+
+func (w *Watcher) isStopped() bool {
+	select {
+	case <-w.shutdownCh:
+		return true
+	default:
+		return false
 	}
 }
