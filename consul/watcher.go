@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/facebookgo/freeport"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/command/connect/proxy"
 	log "github.com/sirupsen/logrus"
@@ -107,7 +108,14 @@ func (w *Watcher) Run() error {
 	go w.watchLeaf()
 	go w.watchService(proxyID, w.handleProxyChange)
 	go w.watchService(w.service, func(first bool, srv *api.AgentService) {
-		w.downstream.TargetPort = srv.Port
+		srvport := srv.Port
+		if srvport == 0 {
+			srvport, err = freeport.Get()
+			if err != nil {
+				log.Errorf(err.Error())
+			}
+		}
+		w.downstream.TargetPort = srvport
 		if first {
 			w.ready.Done()
 		}
