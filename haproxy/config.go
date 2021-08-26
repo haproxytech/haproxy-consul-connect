@@ -116,7 +116,7 @@ func newHaConfig(baseDir string, sd *lib.Shutdown) (*haConfig, error) {
 	}()
 
 	cfg.DataplanePass = createRandomString()
-	cfg.DataplaneUser = "hapeoxy"
+	cfg.DataplaneUser = "haproxy"
 
 	err = tmpl.Execute(cfgFile, baseParams{
 		NbThread:      runtime.GOMAXPROCS(0),
