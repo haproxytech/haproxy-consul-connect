@@ -1,5 +1,8 @@
 # HAProxy Connect
 
+[![Contributors](https://img.shields.io/github/contributors/haproxytech/haproxy-consul-connect?color=purple)](https://github.com/haproxy/haproxy/blob/master/CONTRIBUTING)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
 [Consul Connect](https://www.consul.io/docs/connect/index.html) provides a simple way to setup service mesh between your services by offloading the load balancing logic to a sidecar process running alongside your application. It exposes a local port per service and takes care of forwarding the traffic to alives instances of the services your application wants to target. Additionnaly, the traffic is automatically encrypted using TLS, and can be restricted by using [intentions](https://www.consul.io/docs/connect/intentions.html) by selecting what services can or cannot call your application.
 [HAProxy](https://www.haproxy.org) is a proven load balancer widely used in the industry for its high performance and reliability.
 HAProxy Connect allows to use HAProxy as a load balancer for Consul Connect.
