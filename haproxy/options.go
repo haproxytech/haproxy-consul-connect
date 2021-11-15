@@ -8,5 +8,6 @@ type Options struct {
 	EnableIntentions     bool
 	StatsListenAddr      string
 	StatsRegisterService bool
+	StatsServiceAddr     string
 	LogRequests          bool
 }

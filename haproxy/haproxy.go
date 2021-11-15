@@ -152,6 +152,7 @@ func (h *HAProxy) startStats() error {
 			ListenAddr:      h.opts.StatsListenAddr,
 			ServiceName:     h.currentConsulConfig.ServiceName,
 			ServiceID:       h.currentConsulConfig.ServiceID,
+			ServiceAddr:     h.opts.StatsServiceAddr,
 		})
 
 	go func() {

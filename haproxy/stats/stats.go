@@ -18,6 +18,7 @@ type Config struct {
 	ListenAddr      string
 	ServiceName     string
 	ServiceID       string
+	ServiceAddr     string
 }
 
 type Stats struct {
@@ -81,14 +82,20 @@ func (s *Stats) register() {
 	}
 	port, _ := strconv.Atoi(portStr)
 
+	serviceCheckAddr := "localhost"
+	if s.cfg.ServiceAddr != "" {
+		serviceCheckAddr = s.cfg.ServiceAddr
+	}
+
 	reg := func() {
 		err = s.consulClient.Agent().ServiceRegister(&api.AgentServiceRegistration{
-			ID:   fmt.Sprintf("%s-connect-stats", s.cfg.ServiceID),
-			Name: fmt.Sprintf("%s-connect-stats", s.cfg.ServiceName),
-			Port: port,
+			ID:      fmt.Sprintf("%s-connect-stats", s.cfg.ServiceID),
+			Name:    fmt.Sprintf("%s-connect-stats", s.cfg.ServiceName),
+			Address: s.cfg.ServiceAddr,
+			Port:    port,
 			Checks: api.AgentServiceChecks{
 				&api.AgentServiceCheck{
-					HTTP:                           fmt.Sprintf("http://localhost:%d/metrics", port),
+					HTTP:                           fmt.Sprintf("http://%s:%d/metrics", serviceCheckAddr, port),
 					Interval:                       (10 * time.Second).String(),
 					DeregisterCriticalServiceAfter: time.Minute.String(),
 				},
